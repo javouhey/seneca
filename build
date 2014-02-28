@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+if [ ! -h src/github.com/javouhey/animfilereader ]; then
+	mkdir -p src/github.com/javouhey/
+	ln -s ../../.. src/github.com/javouhey/animfilereader
+fi
+
+export GOBIN=${PWD}/bin
+export GOPATH=${PWD}
+
+go install github.com/javouhey/animfilereader
