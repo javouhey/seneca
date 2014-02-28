@@ -1,11 +1,11 @@
 #!/bin/sh -e
 
-if [ ! -h src/github.com/javouhey/animfilereader ]; then
+if [ ! -h src/github.com/javouhey/seneca ]; then
 	mkdir -p src/github.com/javouhey/
-	ln -s ../../.. src/github.com/javouhey/animfilereader
+	ln -s ../../.. src/github.com/javouhey/seneca
 fi
 
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
 
-go install github.com/javouhey/animfilereader
+go install -v github.com/javouhey/seneca

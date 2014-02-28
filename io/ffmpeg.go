@@ -4,18 +4,37 @@ import (
     "time"
     "fmt"
     "os/exec"
-    //"log"
-    //"bytes"
-    //"os"
     "io"
+    "log"
+
+    "github.com/javouhey/seneca/util"
+)
+
+var (
+    ffmpegExec = ""
+    ffprobeExec = ""
 )
 
 const (
     A = 1
 )
 
+func assignProgram(prog string) {
+    flag, err := util.IsExistProgram(prog) 
+    if err != nil {
+        log.Fatalf("Cannot find program '%#v' on your system. %#v", prog, err)
+    }
+    if flag {
+        ffprobeExec = prog
+    }
+}
+
 func init() {
     fmt.Println("init() from ffmpeg.go", time.Now())
+    assignProgram("ffprobe")
+    fmt.Printf("%#v\n", ffprobeExec)
+    assignProgram("ffmpeg")
+    fmt.Printf("%#v\n", ffprobeExec)
 }
 
 type VideoSize struct {
