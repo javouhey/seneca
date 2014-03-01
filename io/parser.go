@@ -15,35 +15,27 @@ language governing permissions and limitations under the
 License.
 */
 
-package util
+package io
 
 import (
+    "fmt"
+    "bufio"
+    "regexp"
     "strings"
-    "errors"
-    "os/exec"
+)
+
+const (
+    strVideo = "Video:"
+    strDuration = "Duration:"
 )
 
 var (
-    MissingProgramError = errors.New("program name is invalid")
+    duration = regexp.MustCompile(`Duration: (?P<duration>\d{2}:\d{2}:\d{2}.\d{2})`)
 )
 
-func IsEmpty(arg string) bool {
-    return strings.TrimSpace(arg) == ""
-}
-
-func IsExistProgram(execName string) (bool, error) {
-    if IsEmpty(execName) {
-        return false, MissingProgramError
+func parse(str string) {
+    scanner := bufio.NewScanner(strings.NewReader(str))
+    for scanner.Scan() {
+        fmt.Println("=> ", scanner.Text())
     }
-
-    cmd := exec.Command(execName, "-h")
-    if err := cmd.Start(); err != nil {
-        return false, err
-    }
-
-    if err := cmd.Wait(); err != nil {
-        return false, err
-    }
-
-    return true, nil
 }

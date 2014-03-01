@@ -1,11 +1,30 @@
+/*
+Copyright 2014 Gavin Bong.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, 
+software distributed under the License is distributed on an 
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, 
+either express or implied. See the License for the specific 
+language governing permissions and limitations under the 
+License.
+*/
+
 package io
 
 import (
     "time"
     "fmt"
     "os/exec"
-    "io"
+    stdio "io"
     "log"
+    "reflect"
+    "bytes"
 
     "github.com/javouhey/seneca/util"
 )
@@ -16,25 +35,24 @@ var (
 )
 
 const (
-    A = 1
+    CHUNK = 1024
 )
 
-func assignProgram(prog string) {
+func assignProgram(prog string, exec *string) {
     flag, err := util.IsExistProgram(prog) 
     if err != nil {
         log.Fatalf("Cannot find program '%#v' on your system. %#v", prog, err)
     }
     if flag {
-        ffprobeExec = prog
+        p := reflect.ValueOf(exec)
+        p.Elem().SetString(prog)
     }
 }
 
 func init() {
     fmt.Println("init() from ffmpeg.go", time.Now())
-    assignProgram("ffprobe")
-    fmt.Printf("%#v\n", ffprobeExec)
-    assignProgram("ffmpeg")
-    fmt.Printf("%#v\n", ffprobeExec)
+    assignProgram("ffprobe", &ffprobeExec)
+    assignProgram("ffmpeg", &ffmpegExec)
 }
 
 type VideoSize struct {
@@ -49,28 +67,51 @@ type VideoReader struct {
   VideoSize
 }
 
+// getMetadata parses output of `ffprobe` into a map
+func getMetadata(videoFile string) (map[string]string, error) {
+  var n int
+  var err error
+  var stderr stdio.ReadCloser
+  result := make(map[string]string)
 
-
-func test(filename string) error {
-  cmd := exec.Command("ffmpeg", "-i", filename)
-  //cmd := exec.Command("ls", "-l", "opop")
-  fmt.Println("test")
-  stderr, _ := cmd.StderrPipe()
-  err := cmd.Start()
-  if err != nil {
-    fmt.Println("errrrrrr")
+  cmd := exec.Command(ffprobeExec, videoFile)
+  if stderr, err = cmd.StderrPipe(); err != nil {
+    return result, err
   }
-  var b []byte
-  b = make([]byte, 4196)
-  //go io.Copy(os.Stderr, stderr)
-  go io.ReadFull(stderr, b)
+
+  if err := cmd.Start(); err != nil {
+    return result, err
+  }
+
+  var data bytes.Buffer
+  for {
+    n = 0; err = nil
+    tmp := make([]byte, CHUNK)
+    n, err = stdio.ReadFull(stderr, tmp)
+    if err == nil {
+      data.Write(tmp)
+    } else {
+      if err == stdio.ErrUnexpectedEOF {
+        if n > 0 {
+          tmp = tmp[0:n]
+          data.Write(tmp)
+        }
+        break
+      }
+    }
+  }
+  //fmt.Printf("Buffer size %d\n", data.Len())
+  //fmt.Println(data.String())
   cmd.Wait()
-  fmt.Println("res", "e", string(b))
-  return nil
+
+  parse(data.String())
+
+  return result, nil
 }
 
+
 func New(filename string) (*VideoReader, error) {
-  test(filename)
+  getMetadata(filename)
   r := new(VideoReader)
   return r, nil
 }
