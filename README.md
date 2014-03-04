@@ -6,6 +6,15 @@ Creates animated GIFs from videos.
 
 ## Dependencies
 
-* ffmpeg
+* [Go](http://golang.org/)
+* [ffmpeg](http://www.ffmpeg.org/)
 * [pipe](http://labix.org/pipe)
-* bzr
+  * [bzr](http://bazaar.canonical.com/en/) *OPTIONAL*
+
+## Usage
+
+TBD
+
+## Installation
+
+TBD
