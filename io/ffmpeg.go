@@ -19,14 +19,18 @@ package io
 
 import (
     "time"
+    "strings"
     "fmt"
+    "io"
     "os/exec"
+    "os"
     stdio "io"
     "log"
     "reflect"
     "bytes"
-
+    "bufio"
     "github.com/javouhey/seneca/util"
+    "labix.org/v2/pipe"
 )
 
 var (
@@ -101,16 +105,44 @@ func getMetadata(videoFile string) (map[string]string, error) {
     }
   }
   //fmt.Printf("Buffer size %d\n", data.Len())
-  //fmt.Println(data.String())
   cmd.Wait()
 
-  parse(data.String())
+  // TODO: finish this!
+  //parse(data.String())
+
+  p := pipe.Line(
+    pipe.Read(bytes.NewReader(data.Bytes())),
+    pipe.Filter(func(line []byte) bool {
+       s := string(line)
+       s = strings.TrimSpace(s)
+       return strings.HasPrefix(s, "Duration:") || strings.Index(s, "Video:") >= 0
+       //return strings.HasPrefix(s, "Duration:") || strings.IndexAny(s, "Video:") >= 0
+    }),
+    GavinWrite(os.Stdout),
+    //pipe.Write(os.Stdout),
+  )
+  err = pipe.Run(p)
+  if err != nil {
+      log.Fatalf("%v\n", err)
+  }
 
   return result, nil
 }
 
+func GavinWrite(w io.Writer) pipe.Pipe {
+  return pipe.TaskFunc(func(s *pipe.State) error {
+    scanner := bufio.NewScanner(s.Stdin)
+    for scanner.Scan() {
+        _, err := w.Write([]byte("--- " + scanner.Text() + "\n")) 
+        if err != nil {
+            return err
+        }
+    }
+    return nil
+  })
+}
 
-func New(filename string) (*VideoReader, error) {
+func NewVideoReader(filename string) (*VideoReader, error) {
   getMetadata(filename)
   r := new(VideoReader)
   return r, nil

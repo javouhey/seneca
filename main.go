@@ -27,7 +27,7 @@ import (
 func main() {
   //io.New("budapest.flv")
   util.IsEmpty("")
-  io.New("plank.mp4")
+  io.NewVideoReader("plank.mp4")
 }
 
 func init() {

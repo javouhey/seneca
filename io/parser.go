@@ -33,9 +33,11 @@ var (
     duration = regexp.MustCompile(`Duration: (?P<duration>\d{2}:\d{2}:\d{2}.\d{2})`)
 )
 
-func parse(str string) {
+// Returns only the items that we need
+func parse(str string) map[string]string{
     scanner := bufio.NewScanner(strings.NewReader(str))
     for scanner.Scan() {
         fmt.Println("=> ", scanner.Text())
     }
+    return nil
 }
