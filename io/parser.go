@@ -20,14 +20,17 @@ package io
 import (
   "bufio"
   "bytes"
+  "errors"
   "fmt"
   "io"
   //"log"
   "os"
   "regexp"
   "strings"
+  "time"
 
   "github.com/javouhey/seneca/vendor/labix.org/v2/pipe"
+  "github.com/javouhey/seneca/util"
 )
 
 const (
@@ -36,7 +39,10 @@ const (
 )
 
 var (
-  duration = regexp.MustCompile(`Duration: (?P<duration>\d{2}:\d{2}:\d{2}.\d{2})`)
+  // Duration: 00:08:20.53, start: 0.000000, bitrate: 709 kb/s
+  Regex1 = regexp.MustCompile(`^Duration: (?P<duration>\d{2}:\d{2}:\d{2}).\d{2}(.*)$`)
+
+  InvalidDuration = errors.New("Duration input is invalid")
 )
 
 // Returns only the items that we need
@@ -48,8 +54,35 @@ func parse(str string) map[string]string {
   return nil
 }
 
+func ParseDuration(raw string) (time.Duration, error) {
+  if util.IsEmpty(raw) {
+    return 0, InvalidDuration
+  }
+
+  raw = strings.TrimSpace(raw)
+
+  if !Regex1.MatchString(raw) {
+    return 0, InvalidDuration
+  }
+
+  matched := Regex1.ReplaceAllString(raw, 
+    fmt.Sprintf("${%s}", Regex1.SubexpNames()[1]))
+  parts := strings.Split(matched, ":")
+  if len(parts) != 3 {
+    return 0, InvalidDuration
+  }
+
+  retval, err := time.ParseDuration(parts[0] + "h" + parts[1] + "m" + parts[2] + "s")
+  if err != nil {
+    return 0, err
+  }
+  return retval, nil
+}
+
 func parse2(data *bytes.Buffer) (VideoSize, error) {
   fmt.Println("parse2")
+
+  vid := new(VideoReader)
 
   p := pipe.Line(
     pipe.Read(bytes.NewReader(data.Bytes())),
@@ -61,6 +94,20 @@ func parse2(data *bytes.Buffer) (VideoSize, error) {
              strings.Index(s, sVideo) >= 0
     }),
 
+    Processor(func(line []byte) []byte {
+      line = bytes.TrimRight(line, "\r\n")
+      s := string(line)
+      s = strings.TrimSpace(s)
+      if strings.HasPrefix(s, sDuration) {
+        d, _ := ParseDuration(s)
+        // TODO log the err
+        vid.duration = d
+        return make([]byte, 0)
+      } else {
+        return line // leave untouched
+      }
+    }),
+
     CustomWrite(os.Stdout),
     //pipe.Write(os.Stdout),
   )
@@ -68,9 +115,36 @@ func parse2(data *bytes.Buffer) (VideoSize, error) {
   if err != nil {
     return VideoSize{}, err
   }
-
+  fmt.Println("vid", vid)
   return VideoSize{1, 2}, nil
 }
+
+
+func Processor(f func(line []byte) []byte) pipe.Pipe {
+  return pipe.TaskFunc(func(s *pipe.State) error {
+    r := bufio.NewReader(s.Stdin)
+    for {
+      line, err := r.ReadBytes('\n')
+      if len(line) > 0 {
+        line := f(line)
+        if len(line) > 0 {
+          _, err := s.Stdout.Write(line)
+          if err != nil {
+            return err
+          }
+        }
+      }
+      if err != nil {
+        if err == io.EOF {
+          return nil
+        }
+        return err
+      }
+    }
+    return nil
+  })
+}
+
 
 // A custom writer for debugging purposes
 func CustomWrite(w io.Writer) pipe.Pipe {

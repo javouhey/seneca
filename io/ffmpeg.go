@@ -62,7 +62,7 @@ type VideoReader struct {
   filename       string
   fps            float64
   numberofframes uint16
-  duration       float64
+  duration       time.Duration
   VideoSize
 }
 
