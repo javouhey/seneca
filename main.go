@@ -20,14 +20,21 @@ package main
 import (
   "time"
   "fmt"
-  "github.com/javouhey/seneca/util"
   "github.com/javouhey/seneca/io"
 )
 
 func main() {
-  //io.New("budapest.flv")
-  util.IsEmpty("")
-  io.NewVideoReader("plank.mp4")
+  fmt.Printf("%#v\n", simplyExec("goproplane.mp4"))
+  fmt.Printf("%#v\n", simplyExec("budapest.flv"))
+  fmt.Printf("%#v\n", simplyExec("plank.mp4"))
+}
+
+func simplyExec(filename string) *io.VideoReader {
+  res, err := io.NewVideoReader(filename)
+  if err != nil {
+    panic ("fail to get reader: " + err.Error())
+  }
+  return res
 }
 
 func init() {

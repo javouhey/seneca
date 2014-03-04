@@ -27,6 +27,7 @@ import (
   "os"
   "regexp"
   "strings"
+  "strconv"
   "time"
 
   "github.com/javouhey/seneca/vendor/labix.org/v2/pipe"
@@ -42,16 +43,86 @@ var (
   // Duration: 00:08:20.53, start: 0.000000, bitrate: 709 kb/s
   Regex1 = regexp.MustCompile(`^Duration: (?P<duration>\d{2}:\d{2}:\d{2}).\d{2}(.*)$`)
 
+  // .. yuv420p, 960x720 [SAR 1:1 DAR 4:3], ..
+  Regex2 = regexp.MustCompile(`^(?P<prefix>.*?)(?P<size>\d{3,}?x\d{2,}?)([,\s])(?P<postfix>.*)$`)
+
+  // .. , 29.97 fps, 29.97 tbr, 
+  RegexFps1 = regexp.MustCompile(`^(?P<prefix>.*?)(?P<fps>\d{1,}\.?\d* fps,)(?P<postfix>.*)$`)
+  RegexFps2 = regexp.MustCompile(`^(?P<prefix>.*?)(?P<tbr>\d{1,}\.?\d* tbr,)(?P<postfix>.*)$`)
+
   InvalidDuration = errors.New("Duration input is invalid")
+  InvalidVideoSize = errors.New("Cannot parse for WxH")
+  InvalidFps = errors.New("Cannot parse for fps/tbr")
 )
 
-// Returns only the items that we need
+// IGNORE
 func parse(str string) map[string]string {
   scanner := bufio.NewScanner(strings.NewReader(str))
   for scanner.Scan() {
     fmt.Println("=> ", scanner.Text())
   }
   return nil
+}
+
+func ParseFps(raw string) (float32, error) {
+  empty := float32(0.00)
+  if util.IsEmpty(raw) {
+    return empty, InvalidFps
+  }
+
+  raw = strings.TrimSpace(raw)
+
+  fps1 := RegexFps1.MatchString(raw)
+  fps2 := RegexFps2.MatchString(raw)
+
+  if !fps1 && !fps2 {
+    return empty, InvalidFps
+  }
+
+  if fps1 {
+    matched := RegexFps1.ReplaceAllString(raw, 
+      fmt.Sprintf("${%s}", RegexFps1.SubexpNames()[2]))
+    parts := strings.Split(matched, " ")
+    f, _ := strconv.ParseFloat(parts[0], 32)
+    return float32(f), nil
+  }
+
+  if fps2 {
+    matched := RegexFps2.ReplaceAllString(raw, 
+      fmt.Sprintf("${%s}", RegexFps2.SubexpNames()[2]))
+    parts := strings.Split(matched, " ")
+    f, _ := strconv.ParseFloat(parts[0], 32)
+    return float32(f), nil
+  }
+
+  return empty, InvalidFps
+}
+
+func ParseDimension(raw string) (VideoSize, error) {
+  EmptyVid := VideoSize{}
+  if util.IsEmpty(raw) {
+    return EmptyVid, InvalidVideoSize
+  }
+
+  raw = strings.TrimSpace(raw)
+  if !Regex2.MatchString(raw) {
+    return EmptyVid, InvalidVideoSize
+  }
+
+  matched := Regex2.ReplaceAllString(raw, 
+    fmt.Sprintf("${%s}", Regex2.SubexpNames()[2]))
+  parts := strings.Split(matched, "x")
+  if len(parts) != 2 {
+    return EmptyVid, InvalidVideoSize
+  }
+
+  width, err0 := strconv.Atoi(parts[0])
+  height, err1 := strconv.Atoi(parts[1])
+  retval := VideoSize{uint16(width), uint16(height)}
+  if err0 != nil || err1 != nil {
+    return EmptyVid, err0
+  }
+  return retval, nil
 }
 
 func ParseDuration(raw string) (time.Duration, error) {
@@ -79,9 +150,7 @@ func ParseDuration(raw string) (time.Duration, error) {
   return retval, nil
 }
 
-func parse2(data *bytes.Buffer) (VideoSize, error) {
-  fmt.Println("parse2")
-
+func parse2(data *bytes.Buffer) (*VideoReader, error) {
   vid := new(VideoReader)
 
   p := pipe.Line(
@@ -95,13 +164,25 @@ func parse2(data *bytes.Buffer) (VideoSize, error) {
     }),
 
     Processor(func(line []byte) []byte {
-      line = bytes.TrimRight(line, "\r\n")
-      s := string(line)
-      s = strings.TrimSpace(s)
+      s := chomp(line)
       if strings.HasPrefix(s, sDuration) {
         d, _ := ParseDuration(s)
-        // TODO log the err
+        // TODO log the err ??
         vid.duration = d
+        return make([]byte, 0)
+      } else {
+        return line // leave untouched
+      }
+    }),
+
+    Processor(func(line []byte) []byte {
+      s := chomp(line)
+      if strings.Index(s, sVideo) >= 0 {
+        dims, _ := ParseDimension(s)
+        fps, _ := ParseFps(s)
+        // TODO log the err ??
+        vid.VideoSize = dims
+        vid.Fps = fps
         return make([]byte, 0)
       } else {
         return line // leave untouched
@@ -112,13 +193,18 @@ func parse2(data *bytes.Buffer) (VideoSize, error) {
     //pipe.Write(os.Stdout),
   )
   err := pipe.Run(p)
+
+  // TODO fix everything below here
   if err != nil {
-    return VideoSize{}, err
+    return nil, err
   }
-  fmt.Println("vid", vid)
-  return VideoSize{1, 2}, nil
+  return vid, nil
 }
 
+func chomp(line []byte) string {
+  line = bytes.TrimRight(line, "\r\n")
+  return strings.TrimSpace(string(line))
+}
 
 func Processor(f func(line []byte) []byte) pipe.Pipe {
   return pipe.TaskFunc(func(s *pipe.State) error {

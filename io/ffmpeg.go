@@ -55,31 +55,29 @@ func init() {
 }
 
 type VideoSize struct {
-  width, height uint8
+  Width, Height uint16
 }
 
 type VideoReader struct {
-  filename       string
-  fps            float64
-  numberofframes uint16
+  Filename       string
+  Fps            float32
   duration       time.Duration
   VideoSize
 }
 
 // getMetadata parses output of `ffprobe` into a map
-func getMetadata(videoFile string) (map[string]string, error) {
+func getMetadata(videoFile string) (*VideoReader, error) {
   var n int
   var err error
   var stderr stdio.ReadCloser
-  result := make(map[string]string)
 
   cmd := exec.Command(ffprobeExec, videoFile)
   if stderr, err = cmd.StderrPipe(); err != nil {
-    return result, err
+    return nil, err
   }
 
   if err := cmd.Start(); err != nil {
-    return result, err
+    return nil, err
   }
 
   var data bytes.Buffer
@@ -103,16 +101,12 @@ func getMetadata(videoFile string) (map[string]string, error) {
   //fmt.Printf("Buffer size %d\n", data.Len())
   cmd.Wait()
 
-  // TODO: finish this!
-  //parse(data.String())
-
-  parse2(&data)
-
-  return result, nil
+  vr, err := parse2(&data)
+  return vr, err 
 }
 
-func NewVideoReader(filename string) (*VideoReader, error) {
-  getMetadata(filename)
-  r := new(VideoReader)
-  return r, nil
+func NewVideoReader(filename string) (vr *VideoReader, err error) {
+  vr, err = getMetadata(filename)
+  vr.Filename = filename
+  return
 }
