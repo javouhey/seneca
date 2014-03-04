@@ -27,7 +27,7 @@ import (
   "regexp"
   "strings"
 
-  "labix.org/v2/pipe"
+  "github.com/javouhey/seneca/vendor/labix.org/v2/pipe"
 )
 
 const (
