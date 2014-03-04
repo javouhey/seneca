@@ -23,5 +23,5 @@ $ go get labix.org/v2/pipe
 
 ## License
 
-* Code is released under Apache license. See [LICENSE](../blob/master/LICENSE) file.
+* Code is released under Apache license. See [LICENSE](./blob/master/LICENSE) file.
 * The [logo](http://commons.wikimedia.org/wiki/File:Nuremberg_chronicles_f_105r_1.png) above is from the public domain.
