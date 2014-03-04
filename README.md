@@ -9,7 +9,7 @@ Creates animated GIFs from videos.
 * [Go](http://golang.org/)
 * [ffmpeg](http://www.ffmpeg.org/)
 * [pipe](http://labix.org/pipe)
-  * [bzr](http://bazaar.canonical.com/en/) *OPTIONAL*
+  * [bzr](http://bazaar.canonical.com/en/)
 
 ## Usage
 
@@ -17,4 +17,11 @@ TBD
 
 ## Installation
 
-TBD
+```sh
+$ go get labix.org/v2/pipe
+```
+
+## License
+
+* Code is released under Apache license. See LICENSE file.
+* The [logo](http://commons.wikimedia.org/wiki/File:Nuremberg_chronicles_f_105r_1.png) above is from the public domain.
