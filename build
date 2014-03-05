@@ -8,4 +8,10 @@ fi
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
 
-go install -v github.com/javouhey/seneca
+VERSION=$(cat ./VERSION)
+GITSHA=$(git rev-parse HEAD)
+LDFLAGS='-X main.GitSHA "'$GITSHA'" -X main.Version "'$VERSION'" -w'
+
+go list
+#go build -ldflags "$LDFLAGS" github.com/javouhey/seneca
+go install -ldflags "$LDFLAGS" github.com/javouhey/seneca

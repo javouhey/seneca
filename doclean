@@ -3,4 +3,10 @@
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
 
-go clean -i ./...
+echo ${PWD}
+if [ -f ${PWD}/bin/seneca ] 
+then
+  rm -I ${PWD}/bin/seneca
+fi 
+find ${PWD}/pkg -name "*.a" | xargs rm
+go clean -x github.com/javouhey/seneca

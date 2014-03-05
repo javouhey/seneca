@@ -19,7 +19,7 @@ package io
 
 import (
   "bytes"
-  "fmt"
+  //"fmt"
   "github.com/javouhey/seneca/util"
   stdio "io"
   "log"
@@ -49,7 +49,7 @@ func assignProgram(prog string, exec *string) {
 }
 
 func init() {
-  fmt.Println("init() from ffmpeg.go", time.Now())
+  //fmt.Println("init() from ffmpeg.go", time.Now())
   assignProgram("ffprobe", &ffprobeExec)
   assignProgram("ffmpeg", &ffmpegExec)
 }
@@ -98,8 +98,10 @@ func getMetadata(videoFile string) (*VideoReader, error) {
       }
     }
   }
-  //fmt.Printf("Buffer size %d\n", data.Len())
-  cmd.Wait()
+  exitErr := cmd.Wait()
+  if exitErr != nil {
+    return nil, exitErr
+  }
 
   vr, err := parse2(&data)
   return vr, err 
@@ -107,6 +109,8 @@ func getMetadata(videoFile string) (*VideoReader, error) {
 
 func NewVideoReader(filename string) (vr *VideoReader, err error) {
   vr, err = getMetadata(filename)
-  vr.Filename = filename
+  if err == nil {
+    vr.Filename = filename
+  }
   return
 }

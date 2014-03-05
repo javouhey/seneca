@@ -18,14 +18,39 @@ License.
 package util
 
 import (
+    "path/filepath"
     "strings"
     "errors"
     "os/exec"
+    "os"
 )
 
 var (
     MissingProgramError = errors.New("program name is invalid")
+    InvalidPath = errors.New("bad path supplied")
 )
+
+func SanitizeFile(path string) (string, error) {
+    if IsEmpty(path) {
+        return "", InvalidPath
+    }
+
+    candidateFile := filepath.Clean(path)
+    fi, err := os.Stat(candidateFile)
+    if err != nil {
+        return candidateFile, err
+    }
+
+    if fi.IsDir() {
+        return candidateFile, InvalidPath
+    }
+
+    _, err = os.Open(candidateFile)
+    if err != nil {
+        return candidateFile, err
+    }
+    return candidateFile, nil
+}
 
 func IsEmpty(arg string) bool {
     return strings.TrimSpace(arg) == ""
