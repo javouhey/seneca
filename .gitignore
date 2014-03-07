@@ -9,6 +9,7 @@ _test
 bin
 pkg
 src
+launchpad.net
 
 # Architecture specific extensions/prefixes
 *.[568vq]

@@ -3,4 +3,4 @@
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
 
-go test ./io ./util ./progress
+go list ./...

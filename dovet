@@ -1,0 +1,9 @@
+#!/bin/sh -e
+
+export GOBIN=${PWD}/bin
+export GOPATH=${PWD}
+
+# Avoid because it does it for 3rd party & vendored libs
+#go vet ./...
+go tool vet -all=false -v=true -composites=false ./io
+go vet -x ./util ./progress
