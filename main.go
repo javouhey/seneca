@@ -18,10 +18,10 @@ License.
 package main
 
 import (
-    "flag"
     "fmt"
     "log"
     "net"
+    "os"
     "syscall"
 
     "github.com/javouhey/seneca/io"
@@ -39,27 +39,36 @@ var (
 
 func main() {
 
-    var (
-        flVersion = flag.Bool("ver", false, "Print version")
-        flVideo   = flag.String("video", "", "relative or full path to the video file")
-        flPort    = flag.Int("port", 8080, "http listener port for progress reporter")
-        flStart   = flag.String("start", "00:00:00", "instant within video to start capture")
-    )
-    flag.Parse()
+    if len(os.Args) == 1 {
+        fmt.Printf("%s", util.Usage)
+        syscall.Exit(0)
+    }
 
-    if *flVersion {
+    args := new(util.Arguments)
+    if err := args.Parse(os.Args[1:]); err != nil {
+        fmt.Println(err.Error() + "\n")
+        syscall.Exit(0)
+    }
+
+    fmt.Printf("%#v\n", args)
+
+    if args.Version {
         printVersion()
         syscall.Exit(0)
     }
 
+    if args.Help {
+        fmt.Printf("%s", util.Usage)
+        syscall.Exit(0)
+    }
+
     // --- ensure input video is valid file #1 --
-    filename, err := util.SanitizeFile(*flVideo)
+    filename, err := util.SanitizeFile(args.VideoIn)
     if err != nil {
         log.Fatalf("The video file provided is invalid (%s)", err.Error())
     }
-
     // --- valid HTTP port ---
-    util.ValidatePort(*flPort)
+    util.ValidatePort(args.Port)
 
     // --- ensure input video is valid file #2 --
     vr, err2 := io.NewVideoReader(filename)
@@ -69,10 +78,10 @@ func main() {
     fmt.Printf("%#v\n", vr)
 
     // --- valid start time ---
-    util.ParseStartTime(*flStart, vr.Duration)
+    //util.ParseStartTime(*flStart, vr.Duration)
 
     // --- setup our progress bar ---
-    listener := NewListener(*flPort)
+    listener := NewListener(args.Port)
 
     defer func() {
         close(ipc)
@@ -82,7 +91,7 @@ func main() {
     }()
 
     go progress.Outputter(ipc)
-    go progress.Progress(listener, ipc, *flPort)
+    go progress.Progress(listener, ipc, args.Port)
 
     // --- block wait ---
     var input string
