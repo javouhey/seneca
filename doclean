@@ -8,5 +8,5 @@ if [ -f ${PWD}/bin/seneca ]
 then
   rm -I ${PWD}/bin/seneca
 fi 
-find ${PWD}/pkg -name "*.a" | xargs rm
+find ${PWD}/pkg -name "*.a" | xargs -r rm
 go clean -x github.com/javouhey/seneca

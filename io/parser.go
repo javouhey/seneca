@@ -55,15 +55,6 @@ var (
   InvalidFps = errors.New("Cannot parse for fps/tbr")
 )
 
-// IGNORE
-func parse(str string) map[string]string {
-  scanner := bufio.NewScanner(strings.NewReader(str))
-  for scanner.Scan() {
-    fmt.Println("=> ", scanner.Text())
-  }
-  return nil
-}
-
 func ParseFps(raw string) (float32, error) {
   empty := float32(0.00)
   if util.IsEmpty(raw) {
@@ -150,7 +141,8 @@ func ParseDuration(raw string) (time.Duration, error) {
   return retval, nil
 }
 
-func parse2(data *bytes.Buffer) (*VideoReader, error) {
+// Parses output from ffprobe
+func parse(data *bytes.Buffer) (*VideoReader, error) {
   vid := new(VideoReader)
 
   p := pipe.Line(
@@ -168,7 +160,7 @@ func parse2(data *bytes.Buffer) (*VideoReader, error) {
       if strings.HasPrefix(s, sDuration) {
         d, _ := ParseDuration(s)
         // TODO log the err ??
-        vid.duration = d
+        vid.Duration = d
         return make([]byte, 0)
       } else {
         return line // leave untouched
@@ -227,7 +219,6 @@ func Processor(f func(line []byte) []byte) pipe.Pipe {
         return err
       }
     }
-    return nil
   })
 }
 

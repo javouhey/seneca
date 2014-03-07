@@ -5,11 +5,9 @@ import (
 	"testing"
     "time"
     "fmt"
-    //"regexp"
-    //"log"
-    //"strings"
-
+    //. "io"
     theio "github.com/javouhey/seneca/io"
+          "github.com/javouhey/seneca/vendor/github.com/stretchr/testify/assert"
 )
 
 var (
@@ -56,47 +54,29 @@ func init() {
 }
 
 func TestFps(t *testing.T) {
-    if theio.RegexFps1.MatchString(streams[0]) {
-        t.Errorf("tsk tsk: fps1")
-    }
+    assert.False(t, theio.RegexFps1.MatchString(streams[0]))
 
     // --- fps ---
-    if !theio.RegexFps1.MatchString(streams[1]) {
-        t.Errorf("tsk tsk: fps1.2")
-    }
+    assert.True(t, theio.RegexFps1.MatchString(streams[1]))
     matched := theio.RegexFps1.ReplaceAllString(streams[1],
         fmt.Sprintf("${%s}", theio.RegexFps1.SubexpNames()[2]))
-    if matched != "29.97 fps," {
-        t.Errorf("tsk tsk: fps1.3")
-    }
+    assert.Equal(t, matched, "29.97 fps,", "")
 
-    if !theio.RegexFps1.MatchString(streams[2]) {
-        t.Errorf("tsk tsk: fps1.4")
-    }
+    assert.True(t, theio.RegexFps1.MatchString(streams[2]))
     matched = theio.RegexFps1.ReplaceAllString(streams[2],
         fmt.Sprintf("${%s}", theio.RegexFps1.SubexpNames()[2]))
-    if matched != "23.97 fps," {
-        t.Errorf("tsk tsk: fps1.5")
-    }
+    assert.Equal(t, matched, "23.97 fps,", "")
 
     // --- tbr ---
-    if !theio.RegexFps2.MatchString(streams[0]) {
-        t.Errorf("tsk tsk: tbr1.1")
-    }
+    assert.True(t, theio.RegexFps2.MatchString(streams[0]))
     matched = theio.RegexFps2.ReplaceAllString(streams[0],
         fmt.Sprintf("${%s}", theio.RegexFps2.SubexpNames()[2]))
-    if matched != "25 tbr," {
-        t.Errorf("tsk tsk: tbr1.2")
-    }
+    assert.Equal(t, matched, "25 tbr,", "")
 
-    if !theio.RegexFps2.MatchString(streams[2]) {
-        t.Errorf("tsk tsk: tbr1.3")
-    }
+    assert.True(t, theio.RegexFps2.MatchString(streams[2]))
     matched = theio.RegexFps2.ReplaceAllString(streams[2],
         fmt.Sprintf("${%s}", theio.RegexFps2.SubexpNames()[2]))
-    if matched != "23.97 tbr," {
-        t.Errorf("tsk tsk: tbr1.4")
-    }
+    assert.Equal(t, matched, "23.97 tbr,", "")
 
     for k, v := range mapf {
         if d, _ := theio.ParseFps(k); d != v {
@@ -116,9 +96,8 @@ func TestSizeRegex(t *testing.T) {
 
 func TestDurationRegex(t *testing.T) {
     _, err := theio.ParseDuration("")
-    if err != theio.InvalidDuration {
-        t.Errorf("empty duration should fail")
-    }
+    assert.Error(t, err, "")
+    assert.Equal(t, err, theio.InvalidDuration, "empty duration should fail")
 
     for k, v := range mapd {
         if d, _ := theio.ParseDuration(k); d != v {

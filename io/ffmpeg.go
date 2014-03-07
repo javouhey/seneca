@@ -29,8 +29,8 @@ import (
 )
 
 var (
-  ffmpegExec  = ""
-  ffprobeExec = ""
+  ffmpegExec  string
+  ffprobeExec string
 )
 
 const (
@@ -49,7 +49,6 @@ func assignProgram(prog string, exec *string) {
 }
 
 func init() {
-  //fmt.Println("init() from ffmpeg.go", time.Now())
   assignProgram("ffprobe", &ffprobeExec)
   assignProgram("ffmpeg", &ffmpegExec)
 }
@@ -61,18 +60,15 @@ type VideoSize struct {
 type VideoReader struct {
   Filename       string
   Fps            float32
-  duration       time.Duration
+  Duration       time.Duration
   VideoSize
 }
 
 // getMetadata parses output of `ffprobe` into a map
 func getMetadata(videoFile string) (*VideoReader, error) {
-  var n int
-  var err error
-  var stderr stdio.ReadCloser
-
   cmd := exec.Command(ffprobeExec, videoFile)
-  if stderr, err = cmd.StderrPipe(); err != nil {
+  stderr, err := cmd.StderrPipe()
+  if err != nil {
     return nil, err
   }
 
@@ -80,7 +76,10 @@ func getMetadata(videoFile string) (*VideoReader, error) {
     return nil, err
   }
 
-  var data bytes.Buffer
+  var (
+      data bytes.Buffer
+      n int
+  )
   for {
     n = 0
     err = nil
@@ -98,13 +97,13 @@ func getMetadata(videoFile string) (*VideoReader, error) {
       }
     }
   }
-  exitErr := cmd.Wait()
-  if exitErr != nil {
-    return nil, exitErr
+
+  if err := cmd.Wait(); err != nil {
+    return nil, err
   }
 
-  vr, err := parse2(&data)
-  return vr, err 
+  vr, err := parse(&data)
+  return vr, err
 }
 
 func NewVideoReader(filename string) (vr *VideoReader, err error) {

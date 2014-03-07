@@ -1,9 +1,10 @@
-package io
+package io_test
 
 import (
 	"testing"
 )
 
+// template test
 func TestEmptyCheck(t *testing.T) {
 	var a []int
 	if nil != a {

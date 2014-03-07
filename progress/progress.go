@@ -19,6 +19,7 @@ package progress
 
 import (
     "net/http"
+    "runtime"
     "fmt"
     "io"
     "time"
@@ -28,6 +29,8 @@ import (
     "strings"
     "strconv"
     "sync"
+
+    "github.com/javouhey/seneca/util"
 )
 
 const (
@@ -154,7 +157,7 @@ func StartListener(wg sync.WaitGroup) {
     }()
 
     go Outputter(mychan)
-    go Progress(l, mychan)
+    go Progress(l, mychan, 8080)
 
     fmt.Println("wg.Wait()")
     wg.Wait()
@@ -176,20 +179,26 @@ func Outputter(q chan Status) {
             } else {
                fmt.Printf(" Completed\n")
             }
+        } else {
+            fmt.Println("Outputter:: fail to read from channel")
+            break
         }
+        runtime.Gosched()
     }
 }
 
 // goroutine responsible for starting the webserver
-func Progress(l net.Listener, q chan Status) {
+func Progress(l net.Listener, q chan Status, port int) {
+    httpPort := strconv.Itoa(port)
+
     s := &http.Server{
-      Addr: ":8080",
+      Addr: util.ToPort(port),
       Handler: MyHandler{&q},
       //ReadTimeout: 60 * 60 * time.Second,
       WriteTimeout: 40 * time.Second,
       MaxHeaderBytes: 1 << 20,
     }
-    log.Printf("HTTP server listening on port %s\n", "8080")
-    s.Serve(l)
-    log.Printf("webserver 8080 dying")
+    log.Printf("HTTP server listening on port %s\n", httpPort)
+    log.Println(s.Serve(l)) 
+    //log.Fatal(s.Serve(l)) // BAD
 }

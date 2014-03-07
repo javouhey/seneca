@@ -19,16 +19,54 @@ package util
 
 import (
     "path/filepath"
+    "time"
+    "regexp"
     "strings"
+    "strconv"
     "errors"
     "os/exec"
+    "os/user"
     "os"
+    "log"
 )
 
 var (
     MissingProgramError = errors.New("program name is invalid")
     InvalidPath = errors.New("bad path supplied")
+
+    // Duration: 00:08:20
+    regexStartTime = regexp.MustCompile(`^(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})$`)
 )
+
+// total - total time of the video
+// ss - string representation of an instant to start the capture
+func ParseStartTime(ss string, total time.Duration) (time.Duration, error) {
+  if IsEmpty(ss) {
+    log.Fatalf("%s not in format 00:00:00", ss)
+  }
+  //TODO
+  time.ParseDuration("00h01m04s")
+  return 0, nil
+}
+
+func ValidatePort(port int) {
+  if port < 1024 || port > 65535 {
+    log.Fatalf("%d not in the range [1024, 65535]", port) 
+  }
+}
+
+func ToPort(port int) string {
+  return ":" + strconv.Itoa(port)
+}
+
+func expandTilde(path string) (string, error) {
+    this_user, err := user.Current()
+    if err != nil {
+        return path, err
+    }
+    homeDirectory := this_user.HomeDir
+    return strings.Replace(path, "~", homeDirectory, 1), nil
+}
 
 func SanitizeFile(path string) (string, error) {
     if IsEmpty(path) {
@@ -36,6 +74,10 @@ func SanitizeFile(path string) (string, error) {
     }
 
     candidateFile := filepath.Clean(path)
+    candidateFile, err := expandTilde(candidateFile)
+    if err != nil {
+        return candidateFile, err
+    }
     fi, err := os.Stat(candidateFile)
     if err != nil {
         return candidateFile, err

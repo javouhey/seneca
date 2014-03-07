@@ -18,21 +18,14 @@ License.
 package util_test
 
 import (
-    "github.com/javouhey/seneca/util"
     "testing"
+    "github.com/javouhey/seneca/util"
+    "github.com/javouhey/seneca/vendor/github.com/stretchr/testify/assert"
 )
 
 func TestEmptyCheck(t *testing.T) {
-    if !util.IsEmpty("  ") {
-        t.Errorf("2 spaces should be considered empty")
-    }
-    if !util.IsEmpty("") {
-        t.Errorf("should be considered empty")
-    }
-    if util.IsEmpty(" a ") {
-        t.Errorf("should NOT be considered empty")
-    }
-    if util.IsEmpty("a") {
-        t.Errorf("should NOT be considered empty")
-    }
+    assert.True(t, util.IsEmpty("  "))
+    assert.True(t, util.IsEmpty(""))
+    assert.False(t, util.IsEmpty(" a "), "after trimming is length 1 is not empty")
+    assert.False(t, util.IsEmpty("a"), "string of length 1 is not empty")
 }
