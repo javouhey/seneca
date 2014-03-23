@@ -10,6 +10,7 @@ bin
 pkg
 src
 launchpad.net
+snippet
 
 # Architecture specific extensions/prefixes
 *.[568vq]
@@ -27,3 +28,7 @@ _testmain.go
 *.test
 
 .bzr
+
+# video files
+*.mp4
+*.flv
