@@ -26,6 +26,64 @@ import (
     "time"
 )
 
+
+
+type Arguments struct {
+    Help     bool
+    Version  bool
+    VideoIn  string
+    Port     int
+    FromTime Instant
+
+    RequestedScaling bool
+    ScaleFilter string
+}
+
+func New() *Arguments {
+    args := new(Arguments)
+    return args
+}
+
+func (a *Arguments) Parse(arguments []string) error {
+    f := flag.NewFlagSet("seneca", flag.ContinueOnError)
+    f.SetOutput(ioutil.Discard)
+
+    f.BoolVar(&a.Help, "h", false, "")
+    f.BoolVar(&a.Version, "version", false, "")
+    f.StringVar(&a.VideoIn, "video-infile", a.VideoIn, "")
+    f.IntVar(&a.Port, "port", 8080, "")
+    f.Var(&a.FromTime, "from", "")
+
+    var scalingArg string
+    f.StringVar(&scalingArg, "scale", "_:_", "")
+
+    if err := f.Parse(arguments); err != nil {
+        return err
+    }
+
+    preprocessScaleArg(a, scalingArg)
+
+    var _ = a.validate()
+    return nil
+}
+
+func (a *Arguments) validate() error {
+    // TODO
+    fmt.Printf("Port %d\n", a.Port)
+    return nil
+}
+
+func preprocessScaleArg(a *Arguments, scalingArg string) error {
+    if scalingArg != "_:_" {
+        a.RequestedScaling = true
+    }
+    return nil
+}
+
+
+/////////////////////////////////////////////////////////////////
+
+
 type Instant []time.Duration
 
 func (i *Instant) String() string {
@@ -46,40 +104,10 @@ func (i *Instant) Set(value string) error {
     return nil
 }
 
-type Arguments struct {
-    Help     bool
-    Version  bool
-    VideoIn  string
-    Port     int
-    FromTime Instant
-}
 
-func New() *Arguments {
-    args := new(Arguments)
-    return args
-}
 
-func (a *Arguments) Parse(arguments []string) error {
-    f := flag.NewFlagSet("seneca", flag.ContinueOnError)
-    f.SetOutput(ioutil.Discard)
 
-    f.BoolVar(&a.Help, "h", false, "")
-    f.BoolVar(&a.Version, "version", false, "")
-    f.StringVar(&a.VideoIn, "video-infile", a.VideoIn, "")
-    f.IntVar(&a.Port, "port", 8080, "")
-    f.Var(&a.FromTime, "from", "")
-
-    if err := f.Parse(arguments); err != nil {
-        return err
-    }
-
-    return nil
-}
-
-func (a *Arguments) Validate() error {
-    // TODO
-    return nil
-}
+/////////////////////////////////////////////////////////////////
 
 type predicate func(uint16) bool
 
@@ -104,6 +132,7 @@ var scales = map[ScaleType]interface{}{
     WidthHeight: nil,
 }
 
+// Converts into a valid argument to the -vf option of ffmpeg
 func (s ScaleType) interpolate(width, height uint16) string {
     switch s {
     case WidthHeight:
@@ -129,7 +158,8 @@ var ErrNoArgs = errors.New("At least 1 arg must be provided")
 var ErrTwoArgs = errors.New("2 args must be provided")
 var ErrScaleOutOfRange = errors.New("ScaleType not recognized")
 
-// Public API method
+// A priori - arguments have been checked to not exceed the
+//            respective dimensions of the input video 
 func (s ScaleType) Decode(args ...uint16) (string, error) {
     var c = len(args)
 
@@ -156,10 +186,7 @@ func (s ScaleType) Decode(args ...uint16) (string, error) {
             return "", ErrTwoArgs
         }
 
-    case c > 2:
-        fallthrough
-
-    case c == 2:
+    case c >= 2:
         switch {
         case !even(args[0]):
             return "", fmt.Errorf("%d must be even", args[0])

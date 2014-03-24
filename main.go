@@ -40,7 +40,7 @@ var (
 func main() {
 
     if len(os.Args) == 1 {
-        fmt.Printf("%s", util.Usage)
+        fmt.Printf("%s", util.HelpMessage)
         syscall.Exit(0)
     }
 
@@ -58,7 +58,7 @@ func main() {
     }
 
     if args.Help {
-        fmt.Printf("%s", util.Usage)
+        fmt.Printf("%s", util.HelpMessage)
         syscall.Exit(0)
     }
 
