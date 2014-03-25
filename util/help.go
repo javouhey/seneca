@@ -23,7 +23,8 @@ Options:
   -version              Show version.
   -video-infile=<path>  Path (relative/full) to your mp4/flv/mov etc.. video 
   -from=00:00:00        Starting frame offset in hh:mm:ss (Default: 00:00:00)
-  -length=<duration>    Duration in seconds. (Default: 3) 
+  -length=<duration>    Duration to capture (Default: 3s) 
+                        E.g. 2m35s, 1h2m15s
 
 Codec Options:
   -scale width:height   Scale dimensions of input video (Optional)

@@ -36,15 +36,15 @@ type Arguments struct {
     VideoIn  string
     Port     int
 
-    RequestedScaling bool
+    NeedScaling bool
     ScaleFilter string
     Fps      int
 
-    From     Instant
+    From     TimeCode
     Length   time.Duration
 }
 
-func New() *Arguments {
+func NewArguments() *Arguments {
     args := new(Arguments)
     return args
 }
@@ -57,30 +57,45 @@ func (a *Arguments) Parse(arguments []string) error {
     f.BoolVar(&a.Version, "version", false, "")
     f.StringVar(&a.VideoIn, "video-infile", a.VideoIn, "")
     f.IntVar(&a.Port, "port", 8080, "")
-    f.Var(&a.From, "from", "")
 
-    var scalingArg string
-    f.StringVar(&scalingArg, "scale", "_:_", "")
+    scalingArg := f.String("scale", "_:_", "")
     f.IntVar(&a.Fps, "fps", 25, "")
+
+    f.DurationVar(&a.Length, "length", 3 * time.Second, "")
+    fromArg := f.String("from", "00:00:00", "") 
 
     if err := f.Parse(arguments); err != nil {
         return err
     }
 
-    if err := PreprocessScale(a, scalingArg); err != nil {
+    if err := preprocessScale(a, *scalingArg); err != nil {
+        return err
+    }
+    if err := preprocessFrom(a, *fromArg); err != nil {
         return err
     }
 
-    var _ = a.validate()
     return nil
 }
 
-func (a *Arguments) validate() error {
+// Pass in video details to further confine the accepted args
+func (a *Arguments) Validate() error {
     // TODO
     fmt.Printf("Port %d\n", a.Port)
     return nil
 }
 
+
+func preprocessFrom(a *Arguments, fromArg string) error {
+    if fromArg != "00:00:00" {
+        tc, err := ParseFrom(fromArg)
+        if err != nil {
+            return err
+        }
+        a.From = *tc
+    }
+    return nil
+}
 
 var rgxScale = regexp.MustCompile(`^(?P<width>(_|\d{1,})):(?P<height>(_|\d{1,}))$`)
 
@@ -88,7 +103,7 @@ var isUnderscore = func (arg string) bool {
     return "_" == arg
 }
 
-func PreprocessScale(a *Arguments, scalingArg string) error {
+func preprocessScale(a *Arguments, scalingArg string) error {
     err := fmt.Errorf("BAD arg to -scale %q", scalingArg)
     if scalingArg != "_:_" {
         if !rgxScale.MatchString(scalingArg) {
@@ -133,26 +148,29 @@ func PreprocessScale(a *Arguments, scalingArg string) error {
                     return fmt.Errorf("width in -scale %q overflow",
                                       scalingArg)
                 }
-                if vf, err = WidthHeight.Decode(uint16(v1), uint16(v2)); err != nil {
+                if vf, err = WidthHeight.Decode(uint16(v2), uint16(v1)); err != nil {
                     return err
                 }
                 a.ScaleFilter = vf
         }
 
-        a.RequestedScaling = true
+        a.NeedScaling = true
     }
     return nil
 }
 
+
 /////////////////////////////////////////////////////////////////
 
-
+// @deprecated
 type Instant []time.Duration
 
+// @deprecated
 func (i *Instant) String() string {
     return fmt.Sprint(*i)
 }
 
+// @deprecated
 func (i *Instant) Set(value string) error {
     if len(*i) > 0 {
         return errors.New("interval flag already set")
@@ -168,6 +186,28 @@ func (i *Instant) Set(value string) error {
 }
 
 
+/////////////////////////////////////////////////////////////////
+
+const (
+    tclayout = "15:04:05"
+)
+
+type TimeCode time.Time
+
+func (tc TimeCode) String() string {
+    t := time.Time(tc)
+    return fmt.Sprintf("%0.2d:%0.2d:%0.2d", 
+                       t.Hour(), t.Minute(), t.Second())
+}
+
+func ParseFrom(arg string) (*TimeCode, error) {
+    t, err := time.Parse(tclayout, arg)
+    if err != nil {
+        return nil, err
+    }
+    result := TimeCode(t)
+    return &result, nil
+}
 
 
 /////////////////////////////////////////////////////////////////

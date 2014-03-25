@@ -15,13 +15,47 @@ language governing permissions and limitations under the
 License.
 */
 
-package util_test
+package util
 
 import (
-    . "github.com/javouhey/seneca/util"
+    //. "github.com/javouhey/seneca/util"
     "github.com/javouhey/seneca/vendor/github.com/stretchr/testify/assert"
     "testing"
+    "time"
 )
+
+func TestPreprocessFrom(t *testing.T) {
+    var zerot time.Time
+    a := NewArguments()
+    tz := TimeCode(zerot)
+    assert.Equal(t, a.From, tz)
+    assert.Equal(t, tz.String(), "00:00:00")
+
+    assert.Error(t, preprocessFrom(a, "13:01:5"))
+
+    assert.NoError(t, preprocessFrom(a, "13:01:05"))
+    ti, _ := time.Parse("15:04:05", "13:01:05")
+    assert.Equal(t, tz.String(), "00:00:00")
+    assert.Equal(t, a.From, TimeCode(ti))
+    assert.Equal(t, TimeCode(ti).String(), "13:01:05")
+}
+
+func TestPreprocessingScale(t *testing.T) {
+    a := NewArguments()
+    assert.NoError(t, preprocessScale(a, "_:600"))
+    assert.Equal(t, a.NeedScaling, true)
+    assert.Equal(t, a.ScaleFilter, "scale=trunc(oh*a/2)*2:600")
+
+    a = NewArguments()
+    assert.NoError(t, preprocessScale(a, "300:600"))
+    assert.Equal(t, a.NeedScaling, true)
+    assert.Equal(t, a.ScaleFilter, "scale=300:600")
+
+    a = NewArguments()
+    assert.NoError(t, preprocessScale(a, "300:_"))
+    assert.Equal(t, a.NeedScaling, true)
+    assert.Equal(t, a.ScaleFilter, "scale=300:trunc(ow/a/2)*2")
+}
 
 func TestScaleType(t *testing.T) {
 

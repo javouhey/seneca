@@ -44,7 +44,7 @@ func main() {
         syscall.Exit(0)
     }
 
-    args := new(util.Arguments)
+    args := util.NewArguments()
     if err := args.Parse(os.Args[1:]); err != nil {
         fmt.Println(err.Error() + "\n")
         syscall.Exit(1)
@@ -61,6 +61,8 @@ func main() {
         fmt.Printf("%s", util.HelpMessage)
         syscall.Exit(0)
     }
+
+    args.Validate()
 
     // --- ensure input video is valid file #1 --
     filename, err := util.SanitizeFile(args.VideoIn)
