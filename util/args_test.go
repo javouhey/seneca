@@ -23,7 +23,7 @@ import (
     "testing"
 )
 
-func TestEmptyCheck2(t *testing.T) {
+func TestScaleType(t *testing.T) {
 
     _, err := WidthOnly.Decode()
     if assert.Error(t, err, "An error was expected") {

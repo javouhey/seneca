@@ -24,6 +24,8 @@ import (
     "io/ioutil"
     "strings"
     "time"
+    "regexp"
+    "strconv"
 )
 
 
@@ -33,10 +35,13 @@ type Arguments struct {
     Version  bool
     VideoIn  string
     Port     int
-    FromTime Instant
 
     RequestedScaling bool
     ScaleFilter string
+    Fps      int
+
+    From     Instant
+    Length   time.Duration
 }
 
 func New() *Arguments {
@@ -52,16 +57,19 @@ func (a *Arguments) Parse(arguments []string) error {
     f.BoolVar(&a.Version, "version", false, "")
     f.StringVar(&a.VideoIn, "video-infile", a.VideoIn, "")
     f.IntVar(&a.Port, "port", 8080, "")
-    f.Var(&a.FromTime, "from", "")
+    f.Var(&a.From, "from", "")
 
     var scalingArg string
     f.StringVar(&scalingArg, "scale", "_:_", "")
+    f.IntVar(&a.Fps, "fps", 25, "")
 
     if err := f.Parse(arguments); err != nil {
         return err
     }
 
-    preprocessScaleArg(a, scalingArg)
+    if err := PreprocessScale(a, scalingArg); err != nil {
+        return err
+    }
 
     var _ = a.validate()
     return nil
@@ -73,13 +81,68 @@ func (a *Arguments) validate() error {
     return nil
 }
 
-func preprocessScaleArg(a *Arguments, scalingArg string) error {
+
+var rgxScale = regexp.MustCompile(`^(?P<width>(_|\d{1,})):(?P<height>(_|\d{1,}))$`)
+
+var isUnderscore = func (arg string) bool {
+    return "_" == arg
+}
+
+func PreprocessScale(a *Arguments, scalingArg string) error {
+    err := fmt.Errorf("BAD arg to -scale %q", scalingArg)
     if scalingArg != "_:_" {
+        if !rgxScale.MatchString(scalingArg) {
+            return err
+        }
+        w := rgxScale.ReplaceAllString(scalingArg, 
+            fmt.Sprintf("${%s}", rgxScale.SubexpNames()[1]))
+        h := rgxScale.ReplaceAllString(scalingArg, 
+            fmt.Sprintf("${%s}", rgxScale.SubexpNames()[3]))
+
+        var (
+            v1, v2 uint64
+            vf string
+        )
+        switch {
+            case isUnderscore(w) && !isUnderscore(h):
+                if v1, err = strconv.ParseUint(h, 10, 16); err != nil{
+                    return fmt.Errorf("height in -scale %q overflow",
+                                      scalingArg)
+                }
+                if vf, err = HeightOnly.Decode(uint16(v1)); err != nil {
+                    return err
+                }
+                a.ScaleFilter = vf
+
+            case !isUnderscore(w) && isUnderscore(h):
+                if v2, err = strconv.ParseUint(w, 10, 16); err != nil{
+                    return fmt.Errorf("width in -scale %q overflow",
+                                      scalingArg)
+                }
+                if vf, err = WidthOnly.Decode(uint16(v2)); err != nil {
+                    return err
+                }
+                a.ScaleFilter = vf
+
+            default:
+                if v1, err = strconv.ParseUint(h, 10, 16); err != nil{
+                    return fmt.Errorf("height in -scale %q overflow",
+                                      scalingArg)
+                }
+                if v2, err = strconv.ParseUint(w, 10, 16); err != nil{
+                    return fmt.Errorf("width in -scale %q overflow",
+                                      scalingArg)
+                }
+                if vf, err = WidthHeight.Decode(uint16(v1), uint16(v2)); err != nil {
+                    return err
+                }
+                a.ScaleFilter = vf
+        }
+
         a.RequestedScaling = true
     }
     return nil
 }
-
 
 /////////////////////////////////////////////////////////////////
 

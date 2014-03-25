@@ -47,7 +47,7 @@ func main() {
     args := new(util.Arguments)
     if err := args.Parse(os.Args[1:]); err != nil {
         fmt.Println(err.Error() + "\n")
-        syscall.Exit(0)
+        syscall.Exit(1)
     }
 
     fmt.Printf("%#v\n", args)
