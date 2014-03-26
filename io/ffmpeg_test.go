@@ -1,13 +1,17 @@
-package io_test
+package io
 
 import (
-	"testing"
+    "github.com/javouhey/seneca/vendor/github.com/stretchr/testify/assert"
+    "testing"
 )
 
-// template test
-func TestEmptyCheck(t *testing.T) {
-	var a []int
-	if nil != a {
-		t.Errorf("should be nil for an uninitialized slice")
-	}
+func TestVideoReader(t *testing.T) {
+    vr := new(VideoReader)
+    vr.reset2(4,
+        func() string { return "/tmp" },
+        func() string { return "/" },
+        func() int64 { return int64(1234567) },
+    )
+    assert.Equal(t, vr.TmpDir, "/tmp/1234567", "")
+    assert.Equal(t, vr.TmpFile, "img-%04d.png", "")
 }

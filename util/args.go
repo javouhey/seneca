@@ -22,26 +22,24 @@ import (
     "flag"
     "fmt"
     "io/ioutil"
-    "strings"
-    "time"
     "regexp"
     "strconv"
+    "strings"
+    "time"
 )
 
-
-
 type Arguments struct {
-    Help     bool
-    Version  bool
-    VideoIn  string
-    Port     int
+    Help    bool
+    Version bool
+    VideoIn string
+    Port    int
 
     NeedScaling bool
     ScaleFilter string
-    Fps      int
+    Fps         int
 
-    From     TimeCode
-    Length   time.Duration
+    From   TimeCode
+    Length time.Duration
 }
 
 func NewArguments() *Arguments {
@@ -61,8 +59,8 @@ func (a *Arguments) Parse(arguments []string) error {
     scalingArg := f.String("scale", "_:_", "")
     f.IntVar(&a.Fps, "fps", 25, "")
 
-    f.DurationVar(&a.Length, "length", 3 * time.Second, "")
-    fromArg := f.String("from", "00:00:00", "") 
+    f.DurationVar(&a.Length, "length", 3*time.Second, "")
+    fromArg := f.String("from", "00:00:00", "")
 
     if err := f.Parse(arguments); err != nil {
         return err
@@ -78,13 +76,20 @@ func (a *Arguments) Parse(arguments []string) error {
     return nil
 }
 
-// Pass in video details to further confine the accepted args
+// Pass in video details to further constrain the accepted args
 func (a *Arguments) Validate() error {
-    // TODO
-    fmt.Printf("Port %d\n", a.Port)
+    // --- ensure input video is valid file #1 --
+    if _, err := SanitizeFile(a.VideoIn); err != nil {
+        return err
+    }
+
+    // --- valid HTTP port ---
+    if err := ValidatePort(a.Port); err != nil {
+        return err
+    }
+
     return nil
 }
-
 
 func preprocessFrom(a *Arguments, fromArg string) error {
     if fromArg != "00:00:00" {
@@ -99,7 +104,7 @@ func preprocessFrom(a *Arguments, fromArg string) error {
 
 var rgxScale = regexp.MustCompile(`^(?P<width>(_|\d{1,})):(?P<height>(_|\d{1,}))$`)
 
-var isUnderscore = func (arg string) bool {
+var isUnderscore = func(arg string) bool {
     return "_" == arg
 }
 
@@ -109,56 +114,55 @@ func preprocessScale(a *Arguments, scalingArg string) error {
         if !rgxScale.MatchString(scalingArg) {
             return err
         }
-        w := rgxScale.ReplaceAllString(scalingArg, 
+        w := rgxScale.ReplaceAllString(scalingArg,
             fmt.Sprintf("${%s}", rgxScale.SubexpNames()[1]))
-        h := rgxScale.ReplaceAllString(scalingArg, 
+        h := rgxScale.ReplaceAllString(scalingArg,
             fmt.Sprintf("${%s}", rgxScale.SubexpNames()[3]))
 
         var (
             v1, v2 uint64
-            vf string
+            vf     string
         )
         switch {
-            case isUnderscore(w) && !isUnderscore(h):
-                if v1, err = strconv.ParseUint(h, 10, 16); err != nil{
-                    return fmt.Errorf("height in -scale %q overflow",
-                                      scalingArg)
-                }
-                if vf, err = HeightOnly.Decode(uint16(v1)); err != nil {
-                    return err
-                }
-                a.ScaleFilter = vf
+        case isUnderscore(w) && !isUnderscore(h):
+            if v1, err = strconv.ParseUint(h, 10, 16); err != nil {
+                return fmt.Errorf("height in -scale %q overflow",
+                    scalingArg)
+            }
+            if vf, err = HeightOnly.Decode(uint16(v1)); err != nil {
+                return err
+            }
+            a.ScaleFilter = vf
 
-            case !isUnderscore(w) && isUnderscore(h):
-                if v2, err = strconv.ParseUint(w, 10, 16); err != nil{
-                    return fmt.Errorf("width in -scale %q overflow",
-                                      scalingArg)
-                }
-                if vf, err = WidthOnly.Decode(uint16(v2)); err != nil {
-                    return err
-                }
-                a.ScaleFilter = vf
+        case !isUnderscore(w) && isUnderscore(h):
+            if v2, err = strconv.ParseUint(w, 10, 16); err != nil {
+                return fmt.Errorf("width in -scale %q overflow",
+                    scalingArg)
+            }
+            if vf, err = WidthOnly.Decode(uint16(v2)); err != nil {
+                return err
+            }
+            a.ScaleFilter = vf
 
-            default:
-                if v1, err = strconv.ParseUint(h, 10, 16); err != nil{
-                    return fmt.Errorf("height in -scale %q overflow",
-                                      scalingArg)
-                }
-                if v2, err = strconv.ParseUint(w, 10, 16); err != nil{
-                    return fmt.Errorf("width in -scale %q overflow",
-                                      scalingArg)
-                }
-                if vf, err = WidthHeight.Decode(uint16(v2), uint16(v1)); err != nil {
-                    return err
-                }
-                a.ScaleFilter = vf
+        default:
+            if v1, err = strconv.ParseUint(h, 10, 16); err != nil {
+                return fmt.Errorf("height in -scale %q overflow",
+                    scalingArg)
+            }
+            if v2, err = strconv.ParseUint(w, 10, 16); err != nil {
+                return fmt.Errorf("width in -scale %q overflow",
+                    scalingArg)
+            }
+            if vf, err = WidthHeight.Decode(uint16(v2), uint16(v1)); err != nil {
+                return err
+            }
+            a.ScaleFilter = vf
         }
 
         a.NeedScaling = true
     }
     return nil
 }
-
 
 /////////////////////////////////////////////////////////////////
 
@@ -185,7 +189,6 @@ func (i *Instant) Set(value string) error {
     return nil
 }
 
-
 /////////////////////////////////////////////////////////////////
 
 const (
@@ -196,8 +199,8 @@ type TimeCode time.Time
 
 func (tc TimeCode) String() string {
     t := time.Time(tc)
-    return fmt.Sprintf("%0.2d:%0.2d:%0.2d", 
-                       t.Hour(), t.Minute(), t.Second())
+    return fmt.Sprintf("%0.2d:%0.2d:%0.2d",
+        t.Hour(), t.Minute(), t.Second())
 }
 
 func ParseFrom(arg string) (*TimeCode, error) {
@@ -208,7 +211,6 @@ func ParseFrom(arg string) (*TimeCode, error) {
     result := TimeCode(t)
     return &result, nil
 }
-
 
 /////////////////////////////////////////////////////////////////
 
@@ -262,7 +264,7 @@ var ErrTwoArgs = errors.New("2 args must be provided")
 var ErrScaleOutOfRange = errors.New("ScaleType not recognized")
 
 // A priori - arguments have been checked to not exceed the
-//            respective dimensions of the input video 
+//            respective dimensions of the input video
 func (s ScaleType) Decode(args ...uint16) (string, error) {
     var c = len(args)
 

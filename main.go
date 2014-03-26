@@ -46,7 +46,7 @@ func main() {
 
     args := util.NewArguments()
     if err := args.Parse(os.Args[1:]); err != nil {
-        fmt.Println(err.Error() + "\n")
+        fmt.Fprintf(os.Stderr, "%s\n\n%s\n", err, util.ShortHelp)
         syscall.Exit(1)
     }
 
@@ -62,25 +62,23 @@ func main() {
         syscall.Exit(0)
     }
 
-    args.Validate()
-
-    // --- ensure input video is valid file #1 --
-    filename, err := util.SanitizeFile(args.VideoIn)
-    if err != nil {
-        log.Fatalf("The video file provided is invalid (%s)", err.Error())
+    if err := args.Validate(); err != nil {
+        fmt.Fprintf(os.Stderr, "%s\n\n%s\n", err, util.ShortHelp)
+        syscall.Exit(2)
     }
-    // --- valid HTTP port ---
-    util.ValidatePort(args.Port)
 
-    // --- ensure input video is valid file #2 --
-    vr, err2 := io.NewVideoReader(filename)
-    if err2 != nil {
-        log.Fatalf("Not a video file (%s)", err2.Error())
+    var vr *io.VideoReader
+    var errVr error
+
+    filename, _ := util.SanitizeFile(args.VideoIn)
+    vr, errVr = io.NewVideoReader(filename)
+    if errVr != nil {
+        fmt.Fprintf(os.Stderr, io.INVALID_VIDEO, filename, util.ShortHelp)
+        syscall.Exit(128)
     }
+
+    ValidateWithVideo(vr, args)
     fmt.Printf("%#v\n", vr)
-
-    // --- valid start time ---
-    //util.ParseStartTime(*flStart, vr.Duration)
 
     // --- setup our progress bar ---
     listener := NewListener(args.Port)
@@ -94,6 +92,10 @@ func main() {
 
     go progress.Outputter(ipc)
     go progress.Progress(listener, ipc, args.Port)
+
+    // --- ffmpeg execution ---
+
+    fmt.Println("@TODO -- start goroutine to execute ffmpeg")
 
     // --- block wait ---
     var input string
@@ -114,4 +116,11 @@ func NewListener(port int) net.Listener {
 
 func printVersion() {
     fmt.Printf("Seneca version %s, git SHA %s\n", Version, GitSHA)
+}
+
+// TODO 1. Ensure that the provided -from and -length does not exceed
+//         the duration of this video.
+func ValidateWithVideo(vr *io.VideoReader, args *util.Arguments) error {
+    fmt.Println("ValidateWithVideo")
+    return nil
 }

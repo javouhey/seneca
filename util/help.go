@@ -50,3 +50,5 @@ COPYRIGHT:
 
 
 `
+
+var ShortHelp = `See 'seneca -h' for help`

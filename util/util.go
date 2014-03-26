@@ -19,6 +19,7 @@ package util
 
 import (
     "errors"
+    "fmt"
     "log"
     "os"
     "os/exec"
@@ -49,10 +50,11 @@ func ParseStartTime(ss string, total time.Duration) (time.Duration, error) {
     return 0, nil
 }
 
-func ValidatePort(port int) {
+func ValidatePort(port int) error {
     if port < 1024 || port > 65535 {
-        log.Fatalf("%d not in the range [1024, 65535]", port)
+        return fmt.Errorf("Port %d not in the range [1024, 65535]", port)
     }
+    return nil
 }
 
 func ToPort(port int) string {
