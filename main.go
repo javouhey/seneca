@@ -28,6 +28,8 @@ import (
     "github.com/javouhey/seneca/io"
     "github.com/javouhey/seneca/progress"
     "github.com/javouhey/seneca/util"
+
+    "github.com/javouhey/seneca/vendor/launchpad.net/tomb"
 )
 
 var (
@@ -36,6 +38,11 @@ var (
 
     listener net.Listener
     ipc      chan progress.Status
+    t0       tomb.Tomb
+)
+
+const (
+    InGoRoutine = true
 )
 
 func main() {
@@ -99,7 +106,7 @@ func main() {
     go progress.Progress(listener, ipc, args.Port)
 
     // --- ffmpeg execution ---
-    go io.GenerateFrames(vr, args)
+    go io.GenerateFrames(vr, args, InGoRoutine)
 
     // @TODO how to sync with completion of above goroutine ?
     //go MergeAsVideo(vr, args)

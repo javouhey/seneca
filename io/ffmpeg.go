@@ -21,11 +21,11 @@ import (
     "bytes"
     "github.com/javouhey/seneca/util"
     stdio "io"
-    //"log"
     "fmt"
     "os"
     "os/exec"
     "path"
+    "path/filepath"
     "reflect"
     "strings"
     "syscall"
@@ -39,6 +39,8 @@ var (
 
 const (
     CHUNK         = 1024
+    APPDIR        = "seneca"
+
     INVALID_VIDEO = "File %q not a recognizable video file\n\n%s\n"
     MISSING_PROG  = "Missing executable %q on your $PATH.\n\n%s\n"
 )
@@ -64,7 +66,7 @@ type VideoSize struct {
     Width, Height uint16
 }
 
-// Dynamic values depending on time, & OS.
+// Dynamic values depending on time, inputs & OS
 type Work struct {
     TmpDir  string
     TmpFile string
@@ -88,6 +90,7 @@ func (v *VideoReader) Reset(size uint8) error {
         func() int64 { t := time.Now(); return t.Unix() })
 }
 
+// compromise: no method overloading
 func (v *VideoReader) reset2(size uint8,
     tmpdir func() string,
     pathsep func() string,
@@ -106,7 +109,7 @@ func (v *VideoReader) reset2(size uint8,
         return fmt.Errorf("Empty VideoReader.Filename")
     }
     v.Gif = name + ".gif"
-    v.TmpDir = fmt.Sprintf("%s%s%d", tmpdir(), pathsep(), uniqnum())
+    v.TmpDir = filepath.Join(tmpdir(), APPDIR, fmt.Sprintf("%d", (uniqnum())))
     v.TmpFile = fmt.Sprintf("%s%0.2d%s", "img-%", size, "d.png")
     return nil
 }
@@ -114,8 +117,9 @@ func (v *VideoReader) reset2(size uint8,
 
 // generate all the frames as PNGs
 // run as a goroutine
-func GenerateFrames(vr *VideoReader, args *util.Arguments) {
-    cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
+func GenerateFrames(vr *VideoReader, args *util.Arguments, inGoRoutine bool) error {
+    cmdFull := []string{ffmpegExec, "-i", "a.mp4", "-an"}
+    //cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
     if args.NeedScaling {
         cmdFull = append(cmdFull, "-vf", args.ScaleFilter)
     }
@@ -143,32 +147,43 @@ func GenerateFrames(vr *VideoReader, args *util.Arguments) {
             string(os.PathSeparator),
             vr.TmpFile))
 
-    if args.DryRun {
-        fmt.Printf("  %s\n", cmdFull)
-        return
-    }
-
     if args.Verbose {
         fmt.Printf("  Workdir: %q\n", vr.TmpDir)
         fmt.Printf("   Frames: %q\n", vr.TmpFile)
         fmt.Printf("      gif: %q\n", vr.Gif)
     }
 
+    if args.DryRun {
+        fmt.Printf("  %s\n", cmdFull)
+        return nil
+    }
+
     if err := os.MkdirAll(vr.TmpDir, os.ModePerm); err != nil {
-        fmt.Printf("Mkdir? %q\n", err.Error())
-        return
+        if inGoRoutine {
+            fmt.Fprintf(os.Stderr, "Unable to create %q\n\t%v", vr.TmpDir, err)
+        }
+        return err
     }
 
     cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
+
     if err := cmd.Start(); err != nil {
-        fmt.Printf("Exec? %q\n", err.Error())
+        if inGoRoutine {
+            fmt.Fprintf(os.Stderr, "Failed executing %q\n\t%v", ffmpegExec, err)
+        }
+        return err
     }
     if err := cmd.Wait(); err != nil {
-        fmt.Printf("%q\n", err.Error())
+        if inGoRoutine {
+            fmt.Fprintf(os.Stderr, "%q executed with errors\n\t%v", ffmpegExec, err)
+        }
+        return err
     }
-
+    return nil
 }
 
+// Naive way to guess how many images are
+// captured per frames.
 func guess(secs float64) int {
     switch {
     case secs > 0.0 && secs < 15.0:
