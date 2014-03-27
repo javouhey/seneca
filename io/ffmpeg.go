@@ -25,7 +25,9 @@ import (
     "fmt"
     "os"
     "os/exec"
+    "path"
     "reflect"
+    "strings"
     "syscall"
     "time"
 )
@@ -62,9 +64,11 @@ type VideoSize struct {
     Width, Height uint16
 }
 
+// Dynamic values depending on time, & OS.
 type Work struct {
     TmpDir  string
     TmpFile string
+    Gif     string
 }
 
 type VideoReader struct {
@@ -77,8 +81,8 @@ type VideoReader struct {
 
 // Generates internally the temporary work directories
 // and other runtime constants etc.
-func (v *VideoReader) Reset(size uint8) {
-    v.reset2(size,
+func (v *VideoReader) Reset(size uint8) error {
+    return v.reset2(size,
         func() string { return os.TempDir() },
         func() string { return string(os.PathSeparator) },
         func() int64 { t := time.Now(); return t.Unix() })
@@ -87,21 +91,141 @@ func (v *VideoReader) Reset(size uint8) {
 func (v *VideoReader) reset2(size uint8,
     tmpdir func() string,
     pathsep func() string,
-    uniqnum func() int64) {
-    v.TmpDir = fmt.Sprintf("%s%s%d", tmpdir(),
-        pathsep(), uniqnum())
+    uniqnum func() int64) error {
+
+    if util.IsEmpty(v.Filename) {
+        return fmt.Errorf("Missing VideoReader.Filename")
+    }
+    _, video := path.Split(v.Filename)
+    parts := strings.Split(video, ".")
+    if len(parts) < 2 {
+        return fmt.Errorf("Invalid VideoReader.Filename")
+    }
+    name := strings.TrimSpace(parts[0])
+    if util.IsEmpty(name) {
+        return fmt.Errorf("Empty VideoReader.Filename")
+    }
+    v.Gif = name + ".gif"
+    v.TmpDir = fmt.Sprintf("%s%s%d", tmpdir(), pathsep(), uniqnum())
     v.TmpFile = fmt.Sprintf("%s%0.2d%s", "img-%", size, "d.png")
+    return nil
 }
+
 
 // generate all the frames as PNGs
 // run as a goroutine
-func GenerateFrames(vr *VideoReader) {
-    // assemble all the command arguments
+func GenerateFrames(vr *VideoReader, args *util.Arguments) {
+    cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
+    if args.NeedScaling {
+        cmdFull = append(cmdFull, "-vf", args.ScaleFilter)
+    }
+    cmdFull = append(cmdFull, "-ss", args.From.String())
+
+    secs := args.Length.Seconds()
+    switch {
+    case secs < 60.0 && secs > 0.0:
+        cmdFull = append(cmdFull, "-t", fmt.Sprintf("%d", int64(secs)))
+    case args.Length > vr.Duration:
+        fallthrough
+    default:
+        fmt.Fprintf(os.Stderr, "WARNING: %d secs is outside of range. " +
+                               "Forcing to 3 secs.\n", int64(secs))
+        cmdFull = append(cmdFull, "-t", "3")
+    }
+    cmdFull = append(cmdFull, "-q:v", "2", "-f", "image2", "-vsync", "cfr")
+    cmdFull = append(cmdFull, "-r", fmt.Sprintf("%d", args.Fps), "-y")
+    cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
+                                                       args.Port))
+    vr.Reset(uint8(guess(secs)))
+    cmdFull = append(cmdFull,
+        fmt.Sprintf("%s%s%s",
+            vr.TmpDir,
+            string(os.PathSeparator),
+            vr.TmpFile))
+
+    if args.DryRun {
+        fmt.Printf("  %s\n", cmdFull)
+        return
+    }
+
+    if args.Verbose {
+        fmt.Printf("  Workdir: %q\n", vr.TmpDir)
+        fmt.Printf("   Frames: %q\n", vr.TmpFile)
+        fmt.Printf("      gif: %q\n", vr.Gif)
+    }
+
+    if err := os.MkdirAll(vr.TmpDir, os.ModePerm); err != nil {
+        fmt.Printf("Mkdir? %q\n", err.Error())
+        return
+    }
+
+    cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
+    if err := cmd.Start(); err != nil {
+        fmt.Printf("Exec? %q\n", err.Error())
+    }
+    if err := cmd.Wait(); err != nil {
+        fmt.Printf("%q\n", err.Error())
+    }
+
+}
+
+func guess(secs float64) int {
+    switch {
+    case secs > 0.0 && secs < 15.0:
+        return 3
+    case secs >= 15.0 && secs < 30.0:
+        return 4
+    case secs >= 30.0 && secs < 60.0:
+        fallthrough
+    default:
+        return 5
+    }
+}
+
+func MergeAsVideo(vr *VideoReader, args *util.Arguments) {
+    cmdFull := []string{ffmpegExec, "-f", "image2", "-y"}
+    cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
+                                                       args.Port))
+    cmdFull = append(cmdFull, "-i",
+        fmt.Sprintf("%s%s%s",
+            vr.TmpDir,
+            string(os.PathSeparator),
+            vr.TmpFile))
+
+    cmdFull = append(cmdFull, "-c:v", "libx264", "-crf", "23")
+    cmdFull = append(cmdFull, "-vf",
+        fmt.Sprintf("fps=%d,format=yuv420p", args.Fps))
+    cmdFull = append(cmdFull, "-preset", "veryslow")
+    cmdFull = append(cmdFull,
+        fmt.Sprintf("%s%s%s",
+            vr.TmpDir,
+            string(os.PathSeparator),
+            "temp.mp4"))
+    /*
+    -i /tmp/mar20-zlatan/x/img-%03d.png 
+    -c:v libx264  -crf 23 
+    -vf "fps=17,format=yuv420p" -preset veryslow  zlatan1.mp4 
+    */
+    if args.DryRun {
+        fmt.Printf("  %s\n", cmdFull)
+        return
+    }
+    cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
+    if err := cmd.Start(); err != nil {
+        fmt.Printf("Exec? %q\n", err.Error())
+    }
+    if err := cmd.Wait(); err != nil {
+        fmt.Printf("%q\n", err.Error())
+    }
 }
 
 // getMetadata parses output of `ffprobe` into a map
-func getMetadata(videoFile string) (*VideoReader, error) {
-    cmd := exec.Command(ffprobeExec, videoFile)
+func getMetadata(videoFile string, dryRun bool) (*VideoReader, error) {
+    cmdFull := []string{ffprobeExec, videoFile}
+    if dryRun {
+        fmt.Printf("  %s\n", cmdFull)
+    }
+    cmd := exec.Command(ffprobeExec, cmdFull[1:]...)
     stderr, err := cmd.StderrPipe()
     if err != nil {
         return nil, err
@@ -141,8 +265,8 @@ func getMetadata(videoFile string) (*VideoReader, error) {
     return vr, err
 }
 
-func NewVideoReader(filename string) (vr *VideoReader, err error) {
-    vr, err = getMetadata(filename)
+func NewVideoReader(filename string, dryRun bool) (vr *VideoReader, err error) {
+    vr, err = getMetadata(filename, dryRun)
     if err == nil {
         vr.Filename = filename
     }

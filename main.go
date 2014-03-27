@@ -22,6 +22,7 @@ import (
     "log"
     "net"
     "os"
+    "runtime"
     "syscall"
 
     "github.com/javouhey/seneca/io"
@@ -50,7 +51,9 @@ func main() {
         syscall.Exit(1)
     }
 
-    fmt.Printf("%#v\n", args)
+    if args.Verbose {
+        fmt.Printf("  %#v\n", args)
+    }
 
     if args.Version {
         printVersion()
@@ -71,14 +74,16 @@ func main() {
     var errVr error
 
     filename, _ := util.SanitizeFile(args.VideoIn)
-    vr, errVr = io.NewVideoReader(filename)
+    vr, errVr = io.NewVideoReader(filename, args.DryRun)
     if errVr != nil {
         fmt.Fprintf(os.Stderr, io.INVALID_VIDEO, filename, util.ShortHelp)
         syscall.Exit(128)
     }
 
     ValidateWithVideo(vr, args)
-    fmt.Printf("%#v\n", vr)
+    if args.Verbose {
+        fmt.Printf("  %#v\n", vr)
+    }
 
     // --- setup our progress bar ---
     listener := NewListener(args.Port)
@@ -94,8 +99,10 @@ func main() {
     go progress.Progress(listener, ipc, args.Port)
 
     // --- ffmpeg execution ---
+    go io.GenerateFrames(vr, args)
 
-    fmt.Println("@TODO -- start goroutine to execute ffmpeg")
+    // @TODO how to sync with completion of above goroutine ?
+    //go MergeAsVideo(vr, args)
 
     // --- block wait ---
     var input string
@@ -104,6 +111,7 @@ func main() {
 
 func init() {
     ipc = make(chan progress.Status)
+    runtime.GOMAXPROCS(3)
 }
 
 func NewListener(port int) net.Listener {
@@ -121,6 +129,5 @@ func printVersion() {
 // TODO 1. Ensure that the provided -from and -length does not exceed
 //         the duration of this video.
 func ValidateWithVideo(vr *io.VideoReader, args *util.Arguments) error {
-    fmt.Println("ValidateWithVideo")
     return nil
 }

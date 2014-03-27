@@ -31,6 +31,8 @@ import (
 type Arguments struct {
     Help    bool
     Version bool
+    DryRun  bool
+    Verbose bool
     VideoIn string
     Port    int
 
@@ -53,6 +55,8 @@ func (a *Arguments) Parse(arguments []string) error {
 
     f.BoolVar(&a.Help, "h", false, "")
     f.BoolVar(&a.Version, "version", false, "")
+    f.BoolVar(&a.DryRun, "dry-run", false, "")
+    f.BoolVar(&a.Verbose, "vv", false, "")
     f.StringVar(&a.VideoIn, "video-infile", a.VideoIn, "")
     f.IntVar(&a.Port, "port", 8080, "")
 
@@ -76,16 +80,17 @@ func (a *Arguments) Parse(arguments []string) error {
     return nil
 }
 
-// Pass in video details to further constrain the accepted args
 func (a *Arguments) Validate() error {
-    // --- ensure input video is valid file #1 --
     if _, err := SanitizeFile(a.VideoIn); err != nil {
         return err
     }
 
-    // --- valid HTTP port ---
     if err := ValidatePort(a.Port); err != nil {
         return err
+    }
+
+    if a.Fps < 1 || a.Fps > 30 {
+        return fmt.Errorf("frame rate -fps %d not in range [1, 30]", a.Fps)
     }
 
     return nil

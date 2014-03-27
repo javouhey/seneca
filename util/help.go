@@ -21,6 +21,8 @@ Usage:
 Options:
   -h                    Show this screen.
   -version              Show version.
+  -dry-run              Show what would be done without real invocations.
+  -vv                   More verbose output
   -video-infile=<path>  Path (relative/full) to your mp4/flv/mov etc.. video 
   -from=00:00:00        Starting frame offset in hh:mm:ss (Default: 00:00:00)
   -length=<duration>    Duration to capture (Default: 3s) 
@@ -32,7 +34,8 @@ Codec Options:
                         e.g. 300:_  height calculated to maintain aspect ratio.
                              _:250  width calculated to maintain aspect ratio.
 
-  -fps=<value>          frames per second. (Default: 25)
+  -fps=<value>          frames per second. (Default: 25) 
+                        Range [1, 30]
 
 Progress Reporting Options:
   -port=8080            TCP port for progress bar. (Default: 8080)

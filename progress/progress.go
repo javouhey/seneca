@@ -109,17 +109,13 @@ func (h MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
         tmp = make([]byte, 256)
         n, err = io.ReadAtLeast(reader, tmp, 132)
-        //fmt.Println("\nread:", n)
         if err != nil {
             switch err {
             case io.EOF:
-                //fmt.Println("EOF")
                 goto finish
             case io.ErrUnexpectedEOF:
-                //fmt.Println("Unexpected")
                 goto next
             default:
-                //fmt.Println("---->", err)
                 continue
             }
         }
@@ -127,7 +123,6 @@ func (h MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         if n>0 {
             tmp = tmp[0:n]
             buffer.Write(tmp)
-            //log.Printf("-> %s\n", buffer.String())
 
             status := Status{}
             status.parse(buffer.String())
