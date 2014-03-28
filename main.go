@@ -39,6 +39,8 @@ var (
     listener net.Listener
     ipc      chan progress.Status
     t0       tomb.Tomb
+
+    task1    *io.FrameGenerator
 )
 
 const (
@@ -106,7 +108,12 @@ func main() {
     go progress.Progress(listener, ipc, args.Port)
 
     // --- ffmpeg execution ---
-    go io.GenerateFrames(vr, args, InGoRoutine)
+    reply := task1.Run(vr, args)
+    if err := <- reply; err != nil {
+        syscall.Exit(2)
+    }
+
+
 
     // @TODO how to sync with completion of above goroutine ?
     //go MergeAsVideo(vr, args)
@@ -118,6 +125,7 @@ func main() {
 
 func init() {
     ipc = make(chan progress.Status)
+    task1 = new(io.FrameGenerator)
     runtime.GOMAXPROCS(3)
 }
 

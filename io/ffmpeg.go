@@ -114,12 +114,45 @@ func (v *VideoReader) reset2(size uint8,
     return nil
 }
 
+type FrameGenerator struct {}
 
-// generate all the frames as PNGs
-// run as a goroutine
-func GenerateFrames(vr *VideoReader, args *util.Arguments, inGoRoutine bool) error {
-    cmdFull := []string{ffmpegExec, "-i", "a.mp4", "-an"}
-    //cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
+// Task #1: Generate all the frames as PNGs
+func (f FrameGenerator) Run(vr *VideoReader, args *util.Arguments) <-chan error {
+    cmdFull := f.prepCli(vr, args)
+    reply := make(chan error)
+    go func() {
+        if args.DryRun {
+            fmt.Printf("  %s\n", cmdFull)
+            reply <- nil
+            return
+        }
+
+        if err := os.MkdirAll(vr.TmpDir, os.ModePerm); err != nil {
+            fmt.Fprintf(os.Stderr, "Unable to create %q\n\t%v\n", vr.TmpDir, err)
+            reply <- err
+            return
+        }
+
+        cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
+
+        if err := cmd.Start(); err != nil {
+            fmt.Fprintf(os.Stderr, "Failed executing %q\n\t%v\n", ffmpegExec, err)
+            reply <- err
+            return
+        }
+        if err := cmd.Wait(); err != nil {
+            fmt.Fprintf(os.Stderr, "%q executed with errors\n\t%v\n", ffmpegExec, err)
+            reply <- err
+            return
+        }
+        reply <- nil
+    }()
+    return reply
+}
+
+func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string {
+    //cmdFull := []string{ffmpegExec, "-i", "a.mp4", "-an"}
+    cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
     if args.NeedScaling {
         cmdFull = append(cmdFull, "-vf", args.ScaleFilter)
     }
@@ -152,34 +185,7 @@ func GenerateFrames(vr *VideoReader, args *util.Arguments, inGoRoutine bool) err
         fmt.Printf("   Frames: %q\n", vr.TmpFile)
         fmt.Printf("      gif: %q\n", vr.Gif)
     }
-
-    if args.DryRun {
-        fmt.Printf("  %s\n", cmdFull)
-        return nil
-    }
-
-    if err := os.MkdirAll(vr.TmpDir, os.ModePerm); err != nil {
-        if inGoRoutine {
-            fmt.Fprintf(os.Stderr, "Unable to create %q\n\t%v", vr.TmpDir, err)
-        }
-        return err
-    }
-
-    cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
-
-    if err := cmd.Start(); err != nil {
-        if inGoRoutine {
-            fmt.Fprintf(os.Stderr, "Failed executing %q\n\t%v", ffmpegExec, err)
-        }
-        return err
-    }
-    if err := cmd.Wait(); err != nil {
-        if inGoRoutine {
-            fmt.Fprintf(os.Stderr, "%q executed with errors\n\t%v", ffmpegExec, err)
-        }
-        return err
-    }
-    return nil
+    return cmdFull
 }
 
 // Naive way to guess how many images are
