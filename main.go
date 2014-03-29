@@ -24,6 +24,7 @@ import (
     "os"
     "runtime"
     "syscall"
+    "time"
 
     "github.com/javouhey/seneca/io"
     "github.com/javouhey/seneca/progress"
@@ -41,10 +42,7 @@ var (
     t0       tomb.Tomb
 
     task1    *io.FrameGenerator
-)
-
-const (
-    InGoRoutine = true
+    task2    *io.Muxer
 )
 
 func main() {
@@ -76,7 +74,7 @@ func main() {
 
     if err := args.Validate(); err != nil {
         fmt.Fprintf(os.Stderr, "%s\n\n%s\n", err, util.ShortHelp)
-        syscall.Exit(2)
+        syscall.Exit(1)
     }
 
     var vr *io.VideoReader
@@ -86,7 +84,7 @@ func main() {
     vr, errVr = io.NewVideoReader(filename, args.DryRun)
     if errVr != nil {
         fmt.Fprintf(os.Stderr, io.INVALID_VIDEO, filename, util.ShortHelp)
-        syscall.Exit(128)
+        syscall.Exit(1)
     }
 
     ValidateWithVideo(vr, args)
@@ -94,8 +92,8 @@ func main() {
         fmt.Printf("  %#v\n", vr)
     }
 
-    // --- setup our progress bar ---
-    listener := NewListener(args.Port)
+    // --- setup progress notification ---
+    listener := NewTCPListener(args.Port)
 
     defer func() {
         close(ipc)
@@ -104,19 +102,27 @@ func main() {
         log.Printf("Closed TCP listener")
     }()
 
-    go progress.Outputter(ipc)
+    go progress.StatusLogger(ipc)
     go progress.Progress(listener, ipc, args.Port)
 
-    // --- ffmpeg execution ---
+    // --- Pipeline ---
     reply := task1.Run(vr, args)
     if err := <- reply; err != nil {
-        syscall.Exit(2)
+        syscall.Exit(126)
     }
 
+    time.Sleep(10 * time.Second)
+
+    wg := task2.Run(vr, args)
+    wg.Wait()
+    if err := task2.Error(); err != nil {
+        syscall.Exit(126)
+    }
+
+    time.Sleep(10 * time.Second)
 
 
-    // @TODO how to sync with completion of above goroutine ?
-    //go MergeAsVideo(vr, args)
+
 
     // --- block wait ---
     var input string
@@ -126,10 +132,11 @@ func main() {
 func init() {
     ipc = make(chan progress.Status)
     task1 = new(io.FrameGenerator)
+    task2 = new(io.Muxer)
     runtime.GOMAXPROCS(3)
 }
 
-func NewListener(port int) net.Listener {
+func NewTCPListener(port int) net.Listener {
     listener, err := net.Listen("tcp", util.ToPort(port))
     if err != nil {
         log.Fatal(err)

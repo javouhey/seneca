@@ -151,7 +151,7 @@ func StartListener(wg sync.WaitGroup) {
         log.Printf("Closed TCP listener")
     }()
 
-    go Outputter(mychan)
+    go StatusLogger(mychan)
     go Progress(l, mychan, 8080)
 
     fmt.Println("wg.Wait()")
@@ -160,7 +160,7 @@ func StartListener(wg sync.WaitGroup) {
 }
 
 // goroutine responsible for printing progress bar
-func Outputter(q chan Status) {
+func StatusLogger(q chan Status) {
     for {
         stat, ok := <- q
         if ok {
@@ -175,7 +175,7 @@ func Outputter(q chan Status) {
                fmt.Printf(" Completed\n")
             }
         } else {
-            fmt.Println("Outputter:: fail to read from channel")
+            fmt.Println("StatusLogger:: fail to read from channel")
             break
         }
         runtime.Gosched()

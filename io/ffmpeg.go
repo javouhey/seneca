@@ -19,7 +19,6 @@ package io
 
 import (
     "bytes"
-    "github.com/javouhey/seneca/util"
     stdio "io"
     "fmt"
     "os"
@@ -28,8 +27,12 @@ import (
     "path/filepath"
     "reflect"
     "strings"
+    "sync"
     "syscall"
     "time"
+
+    "github.com/javouhey/seneca/util"
+    "github.com/javouhey/seneca/vendor/launchpad.net/tomb"
 )
 
 var (
@@ -40,6 +43,7 @@ var (
 const (
     CHUNK         = 1024
     APPDIR        = "seneca"
+    TMPMP4        = "temp.mp4"
 
     INVALID_VIDEO = "File %q not a recognizable video file\n\n%s\n"
     MISSING_PROG  = "Missing executable %q on your $PATH.\n\n%s\n"
@@ -49,7 +53,7 @@ func assignProgram(prog string, exec *string) {
     flag, err := util.IsExistProgram(prog)
     if err != nil {
         fmt.Fprintf(os.Stderr, MISSING_PROG, prog, util.ShortHelp)
-        syscall.Exit(128)
+        syscall.Exit(127)
     }
     if flag {
         p := reflect.ValueOf(exec)
@@ -83,6 +87,7 @@ type VideoReader struct {
 
 // Generates internally the temporary work directories
 // and other runtime constants etc.
+// @TODO allow only one time execution
 func (v *VideoReader) Reset(size uint8) error {
     return v.reset2(size,
         func() string { return os.TempDir() },
@@ -151,6 +156,7 @@ func (f FrameGenerator) Run(vr *VideoReader, args *util.Arguments) <-chan error 
 }
 
 func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string {
+    // snippet to force an error
     //cmdFull := []string{ffmpegExec, "-i", "a.mp4", "-an"}
     cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
     if args.NeedScaling {
@@ -173,7 +179,7 @@ func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string 
     cmdFull = append(cmdFull, "-r", fmt.Sprintf("%d", args.Fps), "-y")
     cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
                                                        args.Port))
-    vr.Reset(uint8(guess(secs)))
+    vr.Reset(uint8(f.guess(secs)))
     cmdFull = append(cmdFull,
         fmt.Sprintf("%s%s%s",
             vr.TmpDir,
@@ -190,7 +196,7 @@ func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string 
 
 // Naive way to guess how many images are
 // captured per frames.
-func guess(secs float64) int {
+func (f FrameGenerator) guess(secs float64) int {
     switch {
     case secs > 0.0 && secs < 15.0:
         return 3
@@ -203,7 +209,12 @@ func guess(secs float64) int {
     }
 }
 
-func MergeAsVideo(vr *VideoReader, args *util.Arguments) {
+type Muxer struct {
+    err error
+    sync.Mutex
+}
+
+func (m Muxer) prepCli(vr *VideoReader, args *util.Arguments) []string {
     cmdFull := []string{ffmpegExec, "-f", "image2", "-y"}
     cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
                                                        args.Port))
@@ -221,28 +232,60 @@ func MergeAsVideo(vr *VideoReader, args *util.Arguments) {
         fmt.Sprintf("%s%s%s",
             vr.TmpDir,
             string(os.PathSeparator),
-            "temp.mp4"))
-    /*
-    -i /tmp/mar20-zlatan/x/img-%03d.png 
-    -c:v libx264  -crf 23 
-    -vf "fps=17,format=yuv420p" -preset veryslow  zlatan1.mp4 
-    */
-    if args.DryRun {
-        fmt.Printf("  %s\n", cmdFull)
-        return
-    }
-    cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
-    if err := cmd.Start(); err != nil {
-        fmt.Printf("Exec? %q\n", err.Error())
-    }
-    if err := cmd.Wait(); err != nil {
-        fmt.Printf("%q\n", err.Error())
-    }
+            TMPMP4))
+    return cmdFull
+}
+
+func (m *Muxer) setError(e error) {
+    m.Lock()
+    defer m.Unlock()
+    m.err = e
+}
+
+// @TODO receiver doesn't need to be a reference
+func (m *Muxer) Error() error {
+    m.Lock()
+    defer m.Unlock()
+    return m.err
+}
+
+// a priori: FrameGenerator task was executed without errors
+func (m *Muxer) Run(vr *VideoReader, args *util.Arguments) *sync.WaitGroup {
+    var wg sync.WaitGroup
+
+    cmdFull := m.prepCli(vr, args)
+    wg.Add(1)
+
+    go func() {
+        defer wg.Done()
+        if args.DryRun {
+            fmt.Printf("  %s\n", cmdFull)
+            return
+        }
+
+        cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
+
+        if err := cmd.Start(); err != nil {
+            fmt.Fprintf(os.Stderr, "Failed executing %q\n\t%v\n", ffmpegExec, err)
+            m.setError(err)
+            return
+        }
+        if err := cmd.Wait(); err != nil {
+            fmt.Fprintf(os.Stderr, "%q executed with errors\n\t%v\n", ffmpegExec, err)
+            m.setError(err)
+            return
+        }
+        fmt.Println("Muxer is done")
+    }()
+    return &wg
+}
+
+type GifWriter struct {
+    status tomb.Tomb
 }
 
 // getMetadata parses output of `ffprobe` into a map
-func getMetadata(videoFile string, dryRun bool) (*VideoReader, error) {
-    cmdFull := []string{ffprobeExec, videoFile}
+func getMetadata(videoFile string, dryRun bool) (*VideoReader, error) { cmdFull := []string{ffprobeExec, videoFile}
     if dryRun {
         fmt.Printf("  %s\n", cmdFull)
     }
