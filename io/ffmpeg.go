@@ -119,6 +119,7 @@ func (v *VideoReader) reset2(size uint8,
     return nil
 }
 
+// Goal - Share memory by communicating
 type FrameGenerator struct {}
 
 // Task #1: Generate all the frames as PNGs
@@ -209,6 +210,7 @@ func (f FrameGenerator) guess(secs float64) int {
     }
 }
 
+// Goal - Communicate by sharing memory
 type Muxer struct {
     err error
     sync.Mutex
@@ -242,7 +244,7 @@ func (m *Muxer) setError(e error) {
     m.err = e
 }
 
-// @TODO receiver doesn't need to be a reference
+// NOTE: receiver doesn't need to be a reference
 func (m *Muxer) Error() error {
     m.Lock()
     defer m.Unlock()
@@ -281,11 +283,75 @@ func (m *Muxer) Run(vr *VideoReader, args *util.Arguments) *sync.WaitGroup {
 }
 
 type GifWriter struct {
-    status tomb.Tomb
+    Tombstone tomb.Tomb
+}
+
+func (g *GifWriter) Stop() error {
+    g.Tombstone.Kill(nil)
+    return g.Tombstone.Wait()
+}
+
+func (g *GifWriter) Run(vr *VideoReader, args *util.Arguments) {
+    cmdFull := g.prepCli(vr, args)
+
+    go func() {
+        defer g.Tombstone.Done()
+
+        if args.DryRun {
+            fmt.Printf("  %s\n", cmdFull)
+            g.Tombstone.Kill(nil)
+            return
+        }
+
+        time.Sleep(5 * time.Second)
+
+        // Cooperative cancelation.
+        select {
+        case <- g.Tombstone.Dying():
+            fmt.Println("aborting")
+            return
+        default:
+            // noop
+        }
+
+        cmd := exec.Command(ffmpegExec, cmdFull[1:]...)
+
+        if err := cmd.Start(); err != nil {
+            fmt.Fprintf(os.Stderr, "Failed executing %q\n\t%v\n", ffmpegExec, err)
+            g.Tombstone.Kill(err)
+            return
+        }
+        if err := cmd.Wait(); err != nil {
+            fmt.Fprintf(os.Stderr, "%q executed with errors\n\t%v\n", ffmpegExec, err)
+            g.Tombstone.Kill(err)
+            return
+        }
+    }()
+}
+
+//ffmpeg -i zlatan1.mp4 -progress http://localhost:8080  -y 
+//       -vf format=rgb24 -final_delay 100  zlatan1b.gif
+func (g GifWriter) prepCli(vr *VideoReader, args *util.Arguments) []string {
+    cmdFull := []string{ffmpegExec, "-i"}
+    cmdFull = append(cmdFull,
+        fmt.Sprintf("%s%s%s",
+            vr.TmpDir,
+            string(os.PathSeparator),
+            TMPMP4))
+    cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
+                                                       args.Port))
+    cmdFull = append(cmdFull, "-y", "-vf", "format=rgb24")
+    cmdFull = append(cmdFull,
+        fmt.Sprintf("%s%s%s",
+            vr.TmpDir,
+            string(os.PathSeparator),
+            vr.Gif))
+    return cmdFull
 }
 
 // getMetadata parses output of `ffprobe` into a map
-func getMetadata(videoFile string, dryRun bool) (*VideoReader, error) { cmdFull := []string{ffprobeExec, videoFile}
+func getMetadata(videoFile string, dryRun bool) (*VideoReader, error) {
+    cmdFull := []string{ffprobeExec, videoFile}
     if dryRun {
         fmt.Printf("  %s\n", cmdFull)
     }

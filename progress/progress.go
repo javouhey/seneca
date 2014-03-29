@@ -159,24 +159,21 @@ func StartListener(wg sync.WaitGroup) {
     fmt.Println("dying")
 }
 
-// goroutine responsible for printing progress bar
+// goroutine responsible for printing progress ticks
 func StatusLogger(q chan Status) {
     for {
         stat, ok := <- q
-        if ok {
-            //log.Printf("\tRECV: %#v\n", stat)
-            if stat.progress == "continue" {
-               if stat.frame == 0 {
-                   fmt.Printf(".")
-               } else {
-                   fmt.Printf(" %d", stat.frame)
-               }
-            } else {
-               fmt.Printf(" Completed\n")
+        if !ok {
+            break
+        }
+
+        if stat.progress == "continue" {
+            switch {
+            case stat.frame == 0: fmt.Printf(".")
+            default: fmt.Printf(" %d", stat.frame)
             }
         } else {
-            fmt.Println("StatusLogger:: fail to read from channel")
-            break
+            fmt.Printf(" Completed\n")
         }
         runtime.Gosched()
     }

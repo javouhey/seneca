@@ -24,7 +24,7 @@ import (
     "os"
     "runtime"
     "syscall"
-    "time"
+    _ "time"
 
     "github.com/javouhey/seneca/io"
     "github.com/javouhey/seneca/progress"
@@ -43,6 +43,7 @@ var (
 
     task1    *io.FrameGenerator
     task2    *io.Muxer
+    task3    *io.GifWriter
 )
 
 func main() {
@@ -111,28 +112,32 @@ func main() {
         syscall.Exit(126)
     }
 
-    time.Sleep(10 * time.Second)
-
     wg := task2.Run(vr, args)
     wg.Wait()
     if err := task2.Error(); err != nil {
         syscall.Exit(126)
     }
 
-    time.Sleep(10 * time.Second)
+    task3.Run(vr, args)
+    /* Sample code for cancelling the goroutine
 
+    time.Sleep(1 * time.Second)
+    log.Fatal(task3.Stop())
+    */
+    if err := task3.Tombstone.Wait(); err != nil {
+        syscall.Exit(126)
+    }
 
-
-
-    // --- block wait ---
-    var input string
-    fmt.Scanln(&input)
+    // @TODO false barrier
+    //var input string
+    //fmt.Scanln(&input)
 }
 
 func init() {
     ipc = make(chan progress.Status)
     task1 = new(io.FrameGenerator)
     task2 = new(io.Muxer)
+    task3 = new(io.GifWriter)
     runtime.GOMAXPROCS(3)
 }
 
