@@ -236,10 +236,12 @@ const (
     WidthHeight
 )
 
-var scales = map[ScaleType]interface{}{
-    WidthOnly:   nil,
-    HeightOnly:  nil,
-    WidthHeight: nil,
+var empty = struct{}{}
+
+var scales = map[ScaleType]struct{}{
+    WidthOnly:   empty,
+    HeightOnly:  empty,
+    WidthHeight: empty,
 }
 
 // Converts into a valid argument to the -vf option of ffmpeg

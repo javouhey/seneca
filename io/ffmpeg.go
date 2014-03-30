@@ -43,6 +43,7 @@ var (
 const (
     CHUNK         = 1024
     APPDIR        = "seneca"
+    PDIR          = "p"
     TMPMP4        = "temp.mp4"
 
     INVALID_VIDEO = "File %q not a recognizable video file\n\n%s\n"
@@ -73,6 +74,7 @@ type VideoSize struct {
 // Dynamic values depending on time, inputs & OS
 type Work struct {
     TmpDir  string
+    PngDir  string
     TmpFile string
     Gif     string
 }
@@ -115,6 +117,7 @@ func (v *VideoReader) reset2(size uint8,
     }
     v.Gif = name + ".gif"
     v.TmpDir = filepath.Join(tmpdir(), APPDIR, fmt.Sprintf("%d", (uniqnum())))
+    v.PngDir = filepath.Join(v.TmpDir, PDIR)
     v.TmpFile = fmt.Sprintf("%s%0.2d%s", "img-%", size, "d.png")
     return nil
 }
@@ -133,8 +136,8 @@ func (f FrameGenerator) Run(vr *VideoReader, args *util.Arguments) <-chan error 
             return
         }
 
-        if err := os.MkdirAll(vr.TmpDir, os.ModePerm); err != nil {
-            fmt.Fprintf(os.Stderr, "Unable to create %q\n\t%v\n", vr.TmpDir, err)
+        if err := os.MkdirAll(vr.PngDir, os.ModePerm); err != nil {
+            fmt.Fprintf(os.Stderr, "Unable to create %q\n\t%v\n", vr.PngDir, err)
             reply <- err
             return
         }
@@ -183,7 +186,7 @@ func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string 
     vr.Reset(uint8(f.guess(secs)))
     cmdFull = append(cmdFull,
         fmt.Sprintf("%s%s%s",
-            vr.TmpDir,
+            vr.PngDir,
             string(os.PathSeparator),
             vr.TmpFile))
 
@@ -222,7 +225,7 @@ func (m Muxer) prepCli(vr *VideoReader, args *util.Arguments) []string {
                                                        args.Port))
     cmdFull = append(cmdFull, "-i",
         fmt.Sprintf("%s%s%s",
-            vr.TmpDir,
+            vr.PngDir,
             string(os.PathSeparator),
             vr.TmpFile))
 

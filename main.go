@@ -22,6 +22,7 @@ import (
     "log"
     "net"
     "os"
+    "path/filepath"
     "runtime"
     "syscall"
     _ "time"
@@ -97,6 +98,7 @@ func main() {
     listener := NewTCPListener(args.Port)
 
     defer func() {
+        cleanup(vr)
         close(ipc)
         log.Printf("Closed progress channel")
         listener.Close()
@@ -119,18 +121,15 @@ func main() {
     }
 
     task3.Run(vr, args)
-    /* Sample code for cancelling the goroutine
+    /* Sample code for cancelling a goroutine
 
-    time.Sleep(1 * time.Second)
-    log.Fatal(task3.Stop())
+       time.Sleep(1 * time.Second)
+       log.Fatal(task3.Stop())
     */
     if err := task3.Tombstone.Wait(); err != nil {
         syscall.Exit(126)
     }
-
-    // @TODO false barrier
-    //var input string
-    //fmt.Scanln(&input)
+    sayGoodbye(vr)
 }
 
 func init() {
@@ -147,6 +146,22 @@ func NewTCPListener(port int) net.Listener {
         log.Fatal(err)
     }
     return listener
+}
+
+func cleanup(vr *io.VideoReader) {
+    if vr != nil && !util.IsEmpty(vr.PngDir) {
+        if err := os.RemoveAll(vr.PngDir); err != nil {
+            fmt.Printf("WARNING: Removing %s encountered errors\n", vr.PngDir)
+            fmt.Printf("\t%s", err.Error())
+        }
+    }
+}
+
+func sayGoodbye(vr *io.VideoReader) {
+    if vr != nil && !util.IsEmpty(vr.TmpDir) {
+        fmt.Println("\n\nYour animated GIF is ready at location:")
+        fmt.Printf("  %s\n\n", filepath.Join(vr.TmpDir, vr.Gif))
+    }
 }
 
 func printVersion() {

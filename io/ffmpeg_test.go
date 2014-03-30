@@ -22,5 +22,6 @@ func TestVideoReader(t *testing.T) {
     )
     assert.Equal(t, vr.Gif, "crimea.gif")
     assert.Equal(t, vr.TmpDir, "/tmp/seneca/1234567")
+    assert.Equal(t, vr.PngDir, "/tmp/seneca/1234567/p")
     assert.Equal(t, vr.TmpFile, "img-%04d.png")
 }
