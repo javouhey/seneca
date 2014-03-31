@@ -159,14 +159,25 @@ func (f FrameGenerator) Run(vr *VideoReader, args *util.Arguments) <-chan error 
     return reply
 }
 
-func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string {
-    // snippet to force an error
-    //cmdFull := []string{ffmpegExec, "-i", "a.mp4", "-an"}
-    cmdFull := []string{ffmpegExec, "-i", vr.Filename, "-an"}
-    if args.NeedScaling {
-        cmdFull = append(cmdFull, "-vf", args.ScaleFilter)
+func (f FrameGenerator) combineVf(args *util.Arguments) (bool, string) {
+    needSpeed := !util.IsEmpty(args.SpeedSpec)
+    var vfarg string
+    switch {
+    case args.NeedScaling:
+        vfarg += args.ScaleFilter
+        if needSpeed {
+            vfarg += "," + args.SpeedSpec
+        }
+        return true, vfarg
+    case needSpeed:
+        vfarg += args.SpeedSpec
+        return true, vfarg
     }
-    cmdFull = append(cmdFull, "-ss", args.From.String())
+    return false, ""
+}
+
+func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string {
+    cmdFull := []string{ffmpegExec, "-ss", args.From.String()}
 
     secs := args.Length.Seconds()
     switch {
@@ -179,16 +190,19 @@ func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string 
                                "Forcing to 3 secs.\n", int64(secs))
         cmdFull = append(cmdFull, "-t", "3")
     }
+
+    cmdFull = append(cmdFull, "-i", vr.Filename, "-an")
+
+    if vf, s := f.combineVf(args); vf {
+        cmdFull = append(cmdFull, "-vf", s)
+    }
+
     cmdFull = append(cmdFull, "-q:v", "2", "-f", "image2", "-vsync", "cfr")
     cmdFull = append(cmdFull, "-r", fmt.Sprintf("%d", args.Fps), "-y")
     cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
                                                        args.Port))
     vr.Reset(uint8(f.guess(secs)))
-    cmdFull = append(cmdFull,
-        fmt.Sprintf("%s%s%s",
-            vr.PngDir,
-            string(os.PathSeparator),
-            vr.TmpFile))
+    cmdFull = append(cmdFull, filepath.Join(vr.PngDir, vr.TmpFile))
 
     if args.Verbose {
         fmt.Printf("  Workdir: %q\n", vr.TmpDir)
@@ -223,21 +237,12 @@ func (m Muxer) prepCli(vr *VideoReader, args *util.Arguments) []string {
     cmdFull := []string{ffmpegExec, "-f", "image2", "-y"}
     cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
                                                        args.Port))
-    cmdFull = append(cmdFull, "-i",
-        fmt.Sprintf("%s%s%s",
-            vr.PngDir,
-            string(os.PathSeparator),
-            vr.TmpFile))
-
+    cmdFull = append(cmdFull, "-i", filepath.Join(vr.PngDir, vr.TmpFile))
     cmdFull = append(cmdFull, "-c:v", "libx264", "-crf", "23")
     cmdFull = append(cmdFull, "-vf",
         fmt.Sprintf("fps=%d,format=yuv420p", args.Fps))
     cmdFull = append(cmdFull, "-preset", "veryslow")
-    cmdFull = append(cmdFull,
-        fmt.Sprintf("%s%s%s",
-            vr.TmpDir,
-            string(os.PathSeparator),
-            TMPMP4))
+    cmdFull = append(cmdFull, filepath.Join(vr.TmpDir, TMPMP4))
     return cmdFull
 }
 
@@ -280,7 +285,6 @@ func (m *Muxer) Run(vr *VideoReader, args *util.Arguments) *sync.WaitGroup {
             m.setError(err)
             return
         }
-        fmt.Println("Muxer is done")
     }()
     return &wg
 }
@@ -306,7 +310,7 @@ func (g *GifWriter) Run(vr *VideoReader, args *util.Arguments) {
             return
         }
 
-        time.Sleep(5 * time.Second)
+        time.Sleep(2 * time.Second)
 
         // Cooperative cancelation.
         select {
@@ -332,27 +336,17 @@ func (g *GifWriter) Run(vr *VideoReader, args *util.Arguments) {
     }()
 }
 
-//ffmpeg -i zlatan1.mp4 -progress http://localhost:8080  -y 
-//       -vf format=rgb24 -final_delay 100  zlatan1b.gif
 func (g GifWriter) prepCli(vr *VideoReader, args *util.Arguments) []string {
     cmdFull := []string{ffmpegExec, "-i"}
-    cmdFull = append(cmdFull,
-        fmt.Sprintf("%s%s%s",
-            vr.TmpDir,
-            string(os.PathSeparator),
-            TMPMP4))
+    cmdFull = append(cmdFull, filepath.Join(vr.TmpDir, TMPMP4))
     cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",
                                                        args.Port))
     cmdFull = append(cmdFull, "-y", "-vf", "format=rgb24")
-    cmdFull = append(cmdFull,
-        fmt.Sprintf("%s%s%s",
-            vr.TmpDir,
-            string(os.PathSeparator),
-            vr.Gif))
+    cmdFull = append(cmdFull, filepath.Join(vr.TmpDir, vr.Gif))
     return cmdFull
 }
 
-// getMetadata parses output of `ffprobe` into a map
+// getMetadata parses output of `ffprobe` into a VideoReader
 func getMetadata(videoFile string, dryRun bool) (*VideoReader, error) {
     cmdFull := []string{ffprobeExec, videoFile}
     if dryRun {

@@ -30,8 +30,6 @@ import (
     "github.com/javouhey/seneca/io"
     "github.com/javouhey/seneca/progress"
     "github.com/javouhey/seneca/util"
-
-    "github.com/javouhey/seneca/vendor/launchpad.net/tomb"
 )
 
 var (
@@ -40,7 +38,6 @@ var (
 
     listener net.Listener
     ipc      chan progress.Status
-    t0       tomb.Tomb
 
     task1    *io.FrameGenerator
     task2    *io.Muxer
@@ -89,7 +86,6 @@ func main() {
         syscall.Exit(1)
     }
 
-    ValidateWithVideo(vr, args)
     if args.Verbose {
         fmt.Printf("  %#v\n", vr)
     }
@@ -99,10 +95,15 @@ func main() {
 
     defer func() {
         cleanup(vr)
-        close(ipc)
-        log.Printf("Closed progress channel")
+
         listener.Close()
-        log.Printf("Closed TCP listener")
+        if args.Verbose {
+            fmt.Println("Closed TCP listener")
+        }
+        close(ipc)
+        if args.Verbose {
+            fmt.Println("Closed progress channel")
+        }
     }()
 
     go progress.StatusLogger(ipc)
@@ -121,10 +122,11 @@ func main() {
     }
 
     task3.Run(vr, args)
-    /* Sample code for cancelling a goroutine
+    /* 
+    Sample code for cancelling a goroutine
 
-       time.Sleep(1 * time.Second)
-       log.Fatal(task3.Stop())
+    time.Sleep(1 * time.Second)
+    log.Fatal(task3.Stop())
     */
     if err := task3.Tombstone.Wait(); err != nil {
         syscall.Exit(126)
@@ -165,11 +167,11 @@ func sayGoodbye(vr *io.VideoReader) {
 }
 
 func printVersion() {
-    fmt.Printf("Seneca version %s, git SHA %s\n", Version, GitSHA)
+    fmt.Printf("\nSeneca version %s, git SHA %s\n", Version, GitSHA)
 }
 
-// TODO 1. Ensure that the provided -from and -length does not exceed
+//@TODO 1. Ensure that the provided -from and -length does not exceed
 //         the duration of this video.
-func ValidateWithVideo(vr *io.VideoReader, args *util.Arguments) error {
-    return nil
-}
+//func ValidateWithVideo(vr *io.VideoReader, args *util.Arguments) error {
+//    return nil
+//}

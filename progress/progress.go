@@ -28,7 +28,6 @@ import (
     "net"
     "strings"
     "strconv"
-    "sync"
 
     "github.com/javouhey/seneca/util"
 )
@@ -86,7 +85,7 @@ type MyHandler struct {
 
 func (h MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     ua := r.Header.Get("User-Agent")
-    fmt.Println("ua:", ua)
+    //fmt.Println("ua:", ua)
 
     if !strings.HasPrefix(ua, FFMPEG_USERAGENT) {
         w.WriteHeader(http.StatusForbidden)
@@ -136,29 +135,6 @@ finish:
     w.(http.Flusher).Flush()
 }
 
-// IGNORE
-func StartListener(wg sync.WaitGroup) {
-    mychan := make(chan Status)
-    l, err := net.Listen("tcp", ":8080")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    defer func() {
-        close(mychan)
-        log.Printf("Closed mychan channel")
-        l.Close()
-        log.Printf("Closed TCP listener")
-    }()
-
-    go StatusLogger(mychan)
-    go Progress(l, mychan, 8080)
-
-    fmt.Println("wg.Wait()")
-    wg.Wait()
-    fmt.Println("dying")
-}
-
 // goroutine responsible for printing progress ticks
 func StatusLogger(q chan Status) {
     for {
@@ -181,7 +157,7 @@ func StatusLogger(q chan Status) {
 
 // goroutine responsible for starting the webserver
 func Progress(l net.Listener, q chan Status, port int) {
-    httpPort := strconv.Itoa(port)
+    //httpPort := strconv.Itoa(port)
 
     s := &http.Server{
       Addr: util.ToPort(port),
@@ -190,7 +166,6 @@ func Progress(l net.Listener, q chan Status, port int) {
       WriteTimeout: 40 * time.Second,
       MaxHeaderBytes: 1 << 20,
     }
-    log.Printf("HTTP server listening on port %s\n", httpPort)
+    //log.Printf("HTTP server listening on port %s\n", httpPort)
     log.Println(s.Serve(l)) 
-    //log.Fatal(s.Serve(l)) // BAD
 }

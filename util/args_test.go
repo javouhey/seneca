@@ -24,6 +24,42 @@ import (
     "time"
 )
 
+var speedFixtures = []struct {
+    in  string
+    out string
+    err bool
+}{
+    {"", "", true},
+    {"placebo", "", false},
+    {"veryfast", "setpts=1/3*PTS", false},
+    {"faster", "setpts=1/2*PTS", false},
+    {"slower", "setpts=2*PTS", false},
+    {"veryslow", "setpts=3*PTS", false},
+    {"ultrafast", "", true},
+    {"blahblah", "", true},
+}
+
+func TestPreprocessSpeed(t *testing.T) {
+    assert.Equal(t, "1", "1")
+    for i, tt := range speedFixtures {
+        a := NewArguments()
+        err := preprocessSpeed(a, tt.in)
+        switch {
+        case err == nil:
+            if tt.err {
+                t.Errorf("%d. Error out(%t), want %t", i, err != nil, tt.err)
+            }
+        default:
+            if !tt.err {
+                t.Errorf("%d. Error out(%t), want %t", i, err != nil, tt.err)
+            }
+        }
+        if a.SpeedSpec != tt.out {
+            t.Errorf("%d. in(%q) => out(%q), want %q", i, tt.in, a.SpeedSpec, tt.out)
+        }
+    }
+}
+
 func TestPreprocessFrom(t *testing.T) {
     var zerot time.Time
     a := NewArguments()

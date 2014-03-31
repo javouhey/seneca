@@ -28,6 +28,8 @@ import (
     "time"
 )
 
+var empty = struct{}{}
+
 type Arguments struct {
     Help    bool
     Version bool
@@ -39,6 +41,7 @@ type Arguments struct {
     NeedScaling bool
     ScaleFilter string
     Fps         int
+    SpeedSpec   string
 
     From   TimeCode
     Length time.Duration
@@ -61,6 +64,7 @@ func (a *Arguments) Parse(arguments []string) error {
     f.IntVar(&a.Port, "port", 8080, "")
 
     scalingArg := f.String("scale", "_:_", "")
+    speedArg := f.String("speed", "placebo", "")
     f.IntVar(&a.Fps, "fps", 25, "")
 
     f.DurationVar(&a.Length, "length", 3*time.Second, "")
@@ -71,6 +75,9 @@ func (a *Arguments) Parse(arguments []string) error {
     }
 
     if err := preprocessScale(a, *scalingArg); err != nil {
+        return err
+    }
+    if err := preprocessSpeed(a, *speedArg); err != nil {
         return err
     }
     if err := preprocessFrom(a, *fromArg); err != nil {
@@ -111,6 +118,17 @@ var rgxScale = regexp.MustCompile(`^(?P<width>(_|\d{1,})):(?P<height>(_|\d{1,}))
 
 var isUnderscore = func(arg string) bool {
     return "_" == arg
+}
+
+func preprocessSpeed(a *Arguments, speedArg string) error {
+    if speedArg != "placebo" {
+        vf, err := DecodeSpeed(speedArg)
+        if err != nil {
+            return err
+        }
+        a.SpeedSpec = vf
+    }
+    return nil
 }
 
 func preprocessScale(a *Arguments, scalingArg string) error {
@@ -219,6 +237,38 @@ func ParseFrom(arg string) (*TimeCode, error) {
 
 /////////////////////////////////////////////////////////////////
 
+var speeds = map[string]struct{}{
+    "veryfast": empty,
+    "faster":   empty,
+    "placebo":  empty,
+    "slower":   empty,
+    "veryslow": empty,
+}
+
+var ErrInvalidSpeed = errors.New("Speed not recognized")
+
+// Converts speed specification to ffmpeg option
+//    speedup: -vf "setpts=(1/X)*PTS"
+//   slowdown: -vf "setpts=(X/1)*PTS"
+func DecodeSpeed(arg string) (string, error) {
+    if _, ok := speeds[arg]; !ok {
+        return "", ErrInvalidSpeed
+    }
+
+    switch arg {
+    case "veryfast": return "setpts=1/3*PTS", nil 
+    case "faster":   return "setpts=1/2*PTS", nil 
+    case "placebo":  return "", nil
+    case "slower":   return "setpts=2*PTS", nil
+    case "veryslow": return "setpts=3*PTS", nil 
+    }
+
+    return "", ErrInvalidSpeed
+}
+
+
+/////////////////////////////////////////////////////////////////
+
 type predicate func(uint16) bool
 
 type ScaleType uint16
@@ -236,7 +286,6 @@ const (
     WidthHeight
 )
 
-var empty = struct{}{}
 
 var scales = map[ScaleType]struct{}{
     WidthOnly:   empty,
@@ -258,6 +307,7 @@ func (s ScaleType) interpolate(width, height uint16) string {
     }
 }
 
+// @TODO unused
 func mkFn(max uint16) func(uint16) bool {
     return func(arg uint16) bool {
         return arg < max

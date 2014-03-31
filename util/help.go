@@ -41,8 +41,14 @@ Progress Reporting Options:
   -port=8080            TCP port for progress bar. (Default: 8080)
 
 Animated GIF Options:
-  -repeat=<count>       Number of times to loop. (Default: loop forever)
-  -delay=<seconds>      Seconds to pause before repeating animation
+  -speed=<value>        Slow down or speed up animation. (Default: placebo)
+                        e.g. veryfast, faster, placebo, slower, veryslow
+
+  -repeat=<count>   **  Number of times to loop. (Default: loop forever)
+  -delay=<seconds>  **  Seconds to pause before repeating animation
+
+STATUS:
+  Options tagged with '**' are not implemented yet.
 
 AUTHOR:
   Written by Gavin Bong 
