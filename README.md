@@ -8,7 +8,6 @@ Creates animated GIFs from videos.
 
 * [Go](http://golang.org/)
 * [ffmpeg](http://www.ffmpeg.org/)
-* [pipe](http://labix.org/pipe)
 
 ## Usage
 
@@ -50,14 +49,39 @@ Animated GIF Options:
 
   -repeat=<count>   **  Number of times to loop. (Default: loop forever)
   -delay=<seconds>  **  Seconds to pause before repeating animation
+  -optimize         **  Attempts to reduce size of generated GIF.
+  -upload           **  Uploads to imgur.com
 
-STATUS:
-  Options tagged with '**' are not implemented yet.
+Exit status:
+  0  if OK,
+  1  if invalid cli arguments (e.g. unable to read supplied video file),
+126  if execution of ffmpeg failed,
+127  if ffmpeg & ffprobe are not found on $PATH.
+
+
+DEVELOPMENT STATUS:
+  Options tagged with ** are not implemented yet.
 ```
 
 ## Installation
 
-TBD
+On my Ubuntu development machine:
+
+1. Install latest Go
+2. Install ffmpeg
+3. Compile `seneca`
+
+```bash
+$ git clone --recursive git@github.com:javouhey/seneca.git
+$ cd seneca
+$ ./build
+```
+
+4. You can now run the binary. (It is advisable to add it to your $PATH)
+
+```bash
+$ ./bin/seneca
+```
 
 ## Sample
 

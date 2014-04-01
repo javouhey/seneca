@@ -46,12 +46,21 @@ Animated GIF Options:
 
   -repeat=<count>   **  Number of times to loop. (Default: loop forever)
   -delay=<seconds>  **  Seconds to pause before repeating animation
+  -optimize         **  Attempts to reduce size of generated GIF
+  -upload           **  Uploads to imgur.com
 
-STATUS:
-  Options tagged with '**' are not implemented yet.
+Exit status:
+  0  if OK,
+  1  if invalid cli arguments (e.g. unable to read supplied video file),
+126  if execution of ffmpeg failed,
+127  if ffmpeg & ffprobe are not found on $PATH.
+
+
+DEVELOPMENT STATUS:
+  Options tagged with ** are not implemented yet.
 
 AUTHOR:
-  Written by Gavin Bong 
+  Written by Gavin Bong
   Report bugs to https://github.com/javouhey/seneca
 
 COPYRIGHT:
