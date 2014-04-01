@@ -77,7 +77,7 @@ $ cd seneca
 $ ./build
 ```
 
-4. You can now run the binary. (It is advisable to add it to your $PATH)
+You can now run the binary. It is advisable to add it to your $PATH.
 
 ```bash
 $ ./bin/seneca
