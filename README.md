@@ -67,8 +67,8 @@ DEVELOPMENT STATUS:
 
 On my Ubuntu development machine:
 
-1. Install latest Go
-2. Install ffmpeg
+1. Install latest `Go`
+2. Install `ffmpeg`
 3. Compile `seneca`
 
 ```bash
