@@ -87,7 +87,7 @@ func main() {
     }
 
     if args.Verbose {
-        fmt.Printf("  %#v\n", vr)
+        fmt.Printf("%s", vr)
     }
 
     // --- setup progress notification ---

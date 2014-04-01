@@ -18,6 +18,14 @@ TBD
 
 TBD
 
+## Sample
+
+```bash
+$ seneca -video-infile=./goproplane.mp4 -scale 280:_
+         -fps 18 -from 00:00:39 -length 9s -speed=slower
+```
+![animated gif](http://i.imgur.com/4VdXgx3.gif)
+
 ## License
 
 * Code is released under Apache license. See [LICENSE][license] file.

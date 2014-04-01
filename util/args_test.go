@@ -120,7 +120,7 @@ func TestScaleType(t *testing.T) {
 
     _, err = WidthOnly.Decode(101)
     if assert.Error(t, err, "An error was expected") {
-        assert.Equal(t, err.Error(), "101 must be even")
+        assert.Equal(t, err.Error(), "101 is not even")
     }
 
     _, err = HeightOnly.Decode()
@@ -133,7 +133,7 @@ func TestScaleType(t *testing.T) {
 
     _, err = HeightOnly.Decode(661)
     if assert.Error(t, err, "An error was expected") {
-        assert.Equal(t, err.Error(), "661 must be even")
+        assert.Equal(t, err.Error(), "661 is not even")
     }
 
     a, err = WidthHeight.Decode()
@@ -151,12 +151,12 @@ func TestScaleType(t *testing.T) {
 
     _, err = WidthHeight.Decode(641, 480)
     if assert.Error(t, err, "An error was expected") {
-        assert.Equal(t, err.Error(), "641 must be even")
+        assert.Equal(t, err.Error(), "641 is not even")
     }
 
     _, err = WidthHeight.Decode(640, 481)
     if assert.Error(t, err, "An error was expected") {
-        assert.Equal(t, err.Error(), "481 must be even")
+        assert.Equal(t, err.Error(), "481 is not even")
     }
 
     a, _ = WidthHeight.Decode(1280, 760, 481, 211)

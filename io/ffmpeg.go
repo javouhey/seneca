@@ -87,6 +87,27 @@ type VideoReader struct {
     Work
 }
 
+func (w Work) String() string {
+    cmdFull := []string{"\n\n  Temp configs\n", "  ------------\n"}
+    cmdFull = append(cmdFull, "  Workdir: ", w.TmpDir)
+    cmdFull = append(cmdFull, "\n   Frames: ", w.TmpFile)
+    cmdFull = append(cmdFull, "\n      Gif: ", w.Gif, "\n")
+    return strings.Join(cmdFull, "")
+}
+
+func (vs VideoSize) String() string {
+    return fmt.Sprintf("%dx%d", vs.Width, vs.Height)
+}
+
+func (vr VideoReader) String() string {
+    cmdFull := []string{"\n  Video metadata\n", "  --------------\n"}
+    cmdFull = append(cmdFull, "     Duration: ")
+    cmdFull = append(cmdFull, fmt.Sprintf("%d", int64(vr.Duration.Seconds())), "\n")
+    cmdFull = append(cmdFull, "  Size  (wxh): ", vr.VideoSize.String(), "\n")
+    cmdFull = append(cmdFull, "  Fps (Hertz): ", fmt.Sprintf("%f", vr.Fps))
+    return strings.Join(cmdFull, "")
+}
+
 // Generates internally the temporary work directories
 // and other runtime constants etc.
 // @TODO allow only one time execution
@@ -205,9 +226,7 @@ func (f FrameGenerator) prepCli(vr *VideoReader, args *util.Arguments) []string 
     cmdFull = append(cmdFull, filepath.Join(vr.PngDir, vr.TmpFile))
 
     if args.Verbose {
-        fmt.Printf("  Workdir: %q\n", vr.TmpDir)
-        fmt.Printf("   Frames: %q\n", vr.TmpFile)
-        fmt.Printf("      gif: %q\n", vr.Gif)
+        fmt.Printf("%s\n", vr.Work)
     }
     return cmdFull
 }

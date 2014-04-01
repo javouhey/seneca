@@ -245,14 +245,14 @@ var speeds = map[string]struct{}{
     "veryslow": empty,
 }
 
-var ErrInvalidSpeed = errors.New("Speed not recognized")
+//var ErrInvalidSpeed = errors.New("Speed not recognized")
 
 // Converts speed specification to ffmpeg option
 //    speedup: -vf "setpts=(1/X)*PTS"
 //   slowdown: -vf "setpts=(X/1)*PTS"
 func DecodeSpeed(arg string) (string, error) {
     if _, ok := speeds[arg]; !ok {
-        return "", ErrInvalidSpeed
+        return "", fmt.Errorf("Invalid speed argument %q", arg)
     }
 
     switch arg {
@@ -263,7 +263,7 @@ func DecodeSpeed(arg string) (string, error) {
     case "veryslow": return "setpts=3*PTS", nil 
     }
 
-    return "", ErrInvalidSpeed
+    return "", fmt.Errorf("Invalid speed argument %q", arg)
 }
 
 
@@ -335,7 +335,7 @@ func (s ScaleType) Decode(args ...uint16) (string, error) {
 
     case c == 1:
         if !even(args[0]) {
-            return "", fmt.Errorf("%d must be even", args[0])
+            return "", fmt.Errorf("%d is not even", args[0])
         }
         switch s {
         case WidthOnly:
@@ -351,9 +351,9 @@ func (s ScaleType) Decode(args ...uint16) (string, error) {
     case c >= 2:
         switch {
         case !even(args[0]):
-            return "", fmt.Errorf("%d must be even", args[0])
+            return "", fmt.Errorf("%d is not even", args[0])
         case !even(args[1]):
-            return "", fmt.Errorf("%d must be even", args[1])
+            return "", fmt.Errorf("%d is not even", args[1])
         default:
             return s.interpolate(args[0], args[1]), nil
         }
