@@ -3,27 +3,36 @@ package io
 import (
     "github.com/javouhey/seneca/vendor/github.com/stretchr/testify/assert"
     "github.com/javouhey/seneca/util"
+    "os"
+    "path/filepath"
     "testing"
 )
 
 func TestVideoReader(t *testing.T) {
+    var pathsep string = string(os.PathSeparator)
+
     vr := new(VideoReader)
     err := vr.reset2(4,
-        func() string { return "/tmp" },
-        func() string { return "/" },
+        func() string { return filepath.Join([]string{pathsep, "tmp"}...) },
+        func() string { return string(os.PathSeparator) },
         func() int64 { return int64(1234567) },
     )
     assert.Error(t, err, "")
 
-    vr.Filename = "/home/putin/crimea.mp4"
+    src := []string{string(os.PathSeparator), "home", "putin", "crimea.mp4"}
+    vr.Filename = filepath.Join(src...)
     err = vr.reset2(4,
-        func() string { return "/tmp" },
-        func() string { return "/" },
+        func() string { return filepath.Join([]string{pathsep, "tmp"}...) },
+        func() string { return string(os.PathSeparator) },
         func() int64 { return int64(1234567) },
     )
     assert.Equal(t, vr.Gif, "crimea.gif")
-    assert.Equal(t, vr.TmpDir, "/tmp/seneca/1234567")
-    assert.Equal(t, vr.PngDir, "/tmp/seneca/1234567/p")
+
+    tmpdir := []string{string(os.PathSeparator), "tmp", "seneca", "1234567"}
+    assert.Equal(t, vr.TmpDir, filepath.Join(tmpdir...))
+
+    pngdir := []string{string(os.PathSeparator), "tmp", "seneca", "1234567", "p"}
+    assert.Equal(t, vr.PngDir, filepath.Join(pngdir...))
     assert.Equal(t, vr.TmpFile, "img-%04d.png")
 }
 
