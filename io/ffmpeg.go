@@ -26,6 +26,7 @@ import (
     "path"
     "path/filepath"
     "reflect"
+    "runtime"
     "strings"
     "sync"
     "syscall"
@@ -127,7 +128,18 @@ func (v *VideoReader) reset2(size uint8,
     if util.IsEmpty(v.Filename) {
         return fmt.Errorf("Missing VideoReader.Filename")
     }
-    _, video := path.Split(v.Filename)
+
+    var video string
+    switch runtime.GOOS {
+    case "windows":
+        winp := strings.Split(v.Filename, string(os.PathSeparator))
+        video = winp[len(winp)-1]
+    case "linux":
+        fallthrough
+    default:
+        video = path.Base(v.Filename)
+    }
+
     parts := strings.Split(video, ".")
     if len(parts) < 2 {
         return fmt.Errorf("Invalid VideoReader.Filename")
