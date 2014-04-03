@@ -65,14 +65,16 @@ DEVELOPMENT STATUS:
 
 ## Installation
 
+### Ubuntu
+
 On my Ubuntu development machine:
 
 1. Install latest `Go`
-2. Install `ffmpeg`
+2. Install latest `ffmpeg`
 3. Compile `seneca`
 
 ```bash
-$ git clone --recursive git@github.com:javouhey/seneca.git
+$ git clone --recursive https://github.com/javouhey/seneca.git
 $ cd seneca
 $ ./build
 ```
@@ -81,6 +83,15 @@ You can now run the binary. It is advisable to add it to your $PATH.
 
 ```bash
 $ ./bin/seneca
+```
+
+### Windows 7/8+
+
+* Static binaries for `ffmpeg` are available from the [download page](http://www.ffmpeg.org/download.html)
+* There is a `build.bat` for windows OS. The batch script will run the `mklink` program to create a Directory symbolic link and you need to run that with Administrator's privilege.
+
+```bash
+> build
 ```
 
 ## Sample
