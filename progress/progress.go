@@ -80,7 +80,7 @@ func (s *Status) parse(httpBody string) {
 }
 
 type MyHandler struct {
-    notifyQueue *chan Status
+    pings chan<- Status
 }
 
 func (h MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +126,7 @@ func (h MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
             status := Status{}
             status.parse(buffer.String())
             //log.Printf("%#v\n", status)
-            *h.notifyQueue <- status
+            h.pings <- status
         }
         buffer.Reset()
     }
@@ -136,7 +136,7 @@ finish:
 }
 
 // goroutine responsible for printing progress ticks
-func StatusLogger(q chan Status) {
+func StatusLogger(q <-chan Status) {
     for {
         stat, ok := <- q
         if !ok {
@@ -156,16 +156,16 @@ func StatusLogger(q chan Status) {
 }
 
 // goroutine responsible for starting the webserver
-func Progress(l net.Listener, q chan Status, port int) {
+func Progress(l net.Listener, q chan<- Status, port int) {
     //httpPort := strconv.Itoa(port)
 
     s := &http.Server{
       Addr: util.ToPort(port),
-      Handler: MyHandler{&q},
+      Handler: MyHandler{q},
       //ReadTimeout: 60 * 60 * time.Second,
       WriteTimeout: 40 * time.Second,
       MaxHeaderBytes: 1 << 20,
     }
     //log.Printf("HTTP server listening on port %s\n", httpPort)
-    log.Println(s.Serve(l)) 
+    log.Println(s.Serve(l))
 }

@@ -25,7 +25,6 @@ import (
     "path/filepath"
     "runtime"
     "syscall"
-    _ "time"
 
     "github.com/javouhey/seneca/io"
     "github.com/javouhey/seneca/progress"
@@ -131,6 +130,7 @@ func main() {
     if err := task3.Tombstone.Wait(); err != nil {
         syscall.Exit(126)
     }
+
     sayGoodbye(vr)
 }
 
