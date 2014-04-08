@@ -6,8 +6,8 @@ Creates animated GIFs from videos.
 
 ## Dependencies
 
-* [Go](http://golang.org/)
-* [ffmpeg](http://www.ffmpeg.org/)
+* [Go](http://golang.org/) >= 1.2
+* [ffmpeg](http://www.ffmpeg.org/) 2.1.4
 
 ## Usage
 
@@ -69,8 +69,8 @@ DEVELOPMENT STATUS:
 
 On my Ubuntu development machine:
 
-1. Install latest `Go`
-2. Install latest `ffmpeg`
+1. Install `Go`
+2. Install `ffmpeg` 
 3. Compile `seneca`
 
 ```bash
