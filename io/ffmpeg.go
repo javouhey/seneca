@@ -15,6 +15,7 @@ language governing permissions and limitations under the
 License.
 */
 
+// Interacts with ffmpeg tools to manipulate videos and generate GIFs
 package io
 
 import (

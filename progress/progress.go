@@ -15,6 +15,7 @@ language governing permissions and limitations under the
 License.
 */
 
+// goroutines to receive pings from ffmpeg
 package progress
 
 import (
