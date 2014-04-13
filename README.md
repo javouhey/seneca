@@ -1,5 +1,7 @@
 ## Seneca 
 
+[![GoDoc](https://godoc.org/github.com/javouhey/seneca?status.png)](https://godoc.org/github.com/javouhey/seneca)
+
 Creates animated GIFs from videos.
 
 <img src="logo.png" width="289" height="309" alt="seneca animated gif logo"/>
