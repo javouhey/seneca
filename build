@@ -10,8 +10,7 @@ export GOPATH=${PWD}
 
 VERSION=$(cat ./VERSION)
 GITSHA=$(git rev-parse HEAD)
-LDFLAGS='-X main.GitSHA "'$GITSHA'" -X main.Version "'$VERSION'" -w'
-#LDFLAGS='-X main.GitSHA "'$GITSHA'" -X main.Version "'$VERSION'"'
+LDFLAGS='-X main.GitSHA="'$GITSHA'" -X main.Version="'$VERSION'" -w'
 
 echo "installing seneca to $GOBIN"
 go install -ldflags "$LDFLAGS" github.com/javouhey/seneca

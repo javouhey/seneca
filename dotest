@@ -3,4 +3,6 @@
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
 
-go test ./io ./util ./progress
+go test github.com/javouhey/seneca/io
+go test github.com/javouhey/seneca/util
+go test github.com/javouhey/seneca/progress

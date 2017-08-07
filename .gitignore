@@ -26,6 +26,8 @@ _testmain.go
 
 *.exe
 *.test
+*.txt
+*.txt~
 
 #.bzr
 
