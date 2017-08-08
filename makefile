@@ -1,7 +1,7 @@
 all: format_main
 
 format_main:
-	gofmt -tabs=false -tabwidth=4 -w=true main.go
+	go fmt main.go
 
 rebuild:
 	./doclean; ./build

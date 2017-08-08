@@ -36,11 +36,11 @@ func init() {
 	}
 
 	maps = map[string]theio.VideoSize{
-		streams[0]: theio.VideoSize{426, 240},
-		streams[1]: theio.VideoSize{960, 720},
-		streams[2]: theio.VideoSize{1280, 720},
-		streams[3]: theio.VideoSize{1280, 720},
-		streams[4]: theio.VideoSize{1280, 720},
+		streams[0]: theio.VideoSize{Width: 426, Height: 240},
+		streams[1]: theio.VideoSize{Width: 960, Height: 720},
+		streams[2]: theio.VideoSize{Width: 1280, Height: 720},
+		streams[3]: theio.VideoSize{Width: 1280, Height: 720},
+		streams[4]: theio.VideoSize{Width: 1280, Height: 720},
 	}
 
 	f1, _ := strconv.ParseFloat("25", 32)

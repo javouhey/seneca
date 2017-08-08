@@ -368,7 +368,7 @@ func (g *GifWriter) Run(vr *VideoReader, args *util.Arguments) {
 	}()
 }
 
-func (g GifWriter) prepCli(vr *VideoReader, args *util.Arguments) []string {
+func (g *GifWriter) prepCli(vr *VideoReader, args *util.Arguments) []string {
 	cmdFull := []string{ffmpegExec, "-i"}
 	cmdFull = append(cmdFull, filepath.Join(vr.TmpDir, TMPMP4))
 	cmdFull = append(cmdFull, "-progress", fmt.Sprintf("http://127.0.0.1:%d",

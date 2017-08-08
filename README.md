@@ -84,7 +84,21 @@ $ ./build
 You can now run the binary. It is advisable to add it to your $PATH.
 
 ```bash
-$ ./bin/seneca
+$ ./bin/youtube-dl --version
+2014.02.06
+
+$ bin/youtube-dl --restrict-filenames -f mp4 -v 
+       https://www.youtube.com/watch?v=4_pS46YRMIQ
+
+$ ./bin/seneca -video-infile=Die_Antwoord_-_Zef_Side.-4_pS46YRMIQ.mp4 
+      -from=00:01:34 -fps=3
+
+ 5 9 Completed
+ Completed
+ Completed
+
+Your animated GIF is ready at location:
+  /tmp/seneca/1502155863/Die_Antwoord_-_Zef_Side.gif
 ```
 
 ### Windows 7/8+
